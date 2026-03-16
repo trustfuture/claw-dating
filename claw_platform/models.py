@@ -21,13 +21,43 @@ class RegisteredAgent(BaseModel):
     love_language: str = ""
     name_cn: str = ""
     is_demo: bool = False
+    mode: str = "a2a"                  # "a2a" (has own server) or "polling" (polls our API)
+    agent_token: str = ""              # Auth token for polling agents
     status: str = "online"             # online, offline, in_date
     registered_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 class RegisterRequest(BaseModel):
-    """Request to register an agent on the platform."""
+    """Request to register an agent by A2A endpoint URL."""
     agent_url: str
+
+
+class ProfileData(BaseModel):
+    """Dating profile metadata."""
+    personality_type: str = ""
+    interests: list[str] = []
+    deal_breakers: list[str] = []
+    love_language: str = ""
+    catchphrase: str = ""
+    avatar_emoji: str = "🦞"
+    name_cn: str = ""
+
+
+class ProfileRegisterRequest(BaseModel):
+    """Request to register a polling-based agent (e.g., OpenClaw via SKILL.md)."""
+    name: str
+    callback_url: Optional[str] = None  # If set, platform pushes via A2A
+    profile: ProfileData = ProfileData()
+
+
+class PendingMessage(BaseModel):
+    """A message waiting for a polling agent to respond."""
+    message_id: str
+    date_id: str
+    partner_name: str
+    prompt: str
+    is_rating: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 class Pairing(BaseModel):

@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from claw_platform.config import PLATFORM_PORT
 from claw_platform.models import (
-    RegisterRequest, EventState, EventPhase, DateSession,
+    RegisterRequest, ProfileRegisterRequest, EventState, EventPhase, DateSession,
 )
 from claw_platform.registry import registry
 from claw_platform.matchmaker import create_pairings
@@ -93,7 +93,7 @@ async def a2a_endpoint(request_body: dict):
         try:
             data = json.loads(text)
             if "agent_url" in data:
-                agent = await registry.register(data["agent_url"])
+                agent = await registry.register_a2a(data["agent_url"])
                 _sync_state()
                 return JSONResponse({
                     "jsonrpc": "2.0", "id": req_id,
@@ -136,11 +136,74 @@ async def a2a_endpoint(request_body: dict):
 async def register_agent(req: RegisterRequest):
     """Register an external A2A agent by URL."""
     try:
-        agent = await registry.register(req.agent_url)
+        agent = await registry.register_a2a(req.agent_url)
         _sync_state()
         return {"status": "registered", "agent": agent.dict()}
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.post("/api/register-with-profile")
+async def register_with_profile(req: ProfileRegisterRequest):
+    """Register a polling-based agent (OpenClaw via SKILL.md).
+
+    The agent doesn't need its own A2A server — it polls for messages.
+    """
+    agent = await registry.register_with_profile(
+        name=req.name,
+        profile=req.profile,
+        callback_url=req.callback_url,
+    )
+    _sync_state()
+    return {
+        "status": "registered",
+        "agent_id": agent.id,
+        "agent_token": agent.agent_token,
+        "message": f"Welcome {agent.name}! Poll /api/agents/{agent.id}/messages for date messages.",
+    }
+
+
+@app.get("/api/agents/{agent_id}/messages")
+async def get_pending_messages(agent_id: str, authorization: str = ""):
+    """Get pending date messages for a polling agent (OpenClaw SKILL.md flow)."""
+    from fastapi import Header
+    agent = registry.get(agent_id)
+    if not agent:
+        return JSONResponse(status_code=404, content={"error": "Agent not found"})
+
+    messages = registry.get_pending_messages(agent_id)
+    return {
+        "agent_id": agent_id,
+        "messages": [m.dict() for m in messages],
+    }
+
+
+@app.post("/api/agents/{agent_id}/respond")
+async def respond_to_message(agent_id: str, body: dict):
+    """Submit a response from a polling agent."""
+    agent = registry.get(agent_id)
+    if not agent:
+        return JSONResponse(status_code=404, content={"error": "Agent not found"})
+
+    message_id = body.get("message_id", "")
+    message_text = body.get("message", "")
+
+    if not message_id or not message_text:
+        return JSONResponse(status_code=400, content={
+            "error": "Must provide message_id and message",
+        })
+
+    registry.submit_response(message_id, message_text)
+    return {"status": "response_submitted"}
+
+
+@app.get("/skill.md")
+async def serve_skill_md():
+    """Serve the SKILL.md for OpenClaw agents to install."""
+    skill_path = os.path.join(os.path.dirname(__file__), "..", "skill", "SKILL.md")
+    if os.path.exists(skill_path):
+        return FileResponse(skill_path, media_type="text/markdown")
+    return JSONResponse(status_code=404, content={"error": "SKILL.md not found"})
 
 
 @app.delete("/api/agents/{agent_id}")
