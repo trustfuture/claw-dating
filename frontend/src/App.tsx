@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
+import { RegisterAgent } from './components/RegisterAgent'
 import { LobsterPool } from './components/LobsterPool'
 import { MatchReveal } from './components/MatchReveal'
 import { DateRoom } from './components/DateRoom'
 import { Scoreboard } from './components/Scoreboard'
 import { EventTimeline } from './components/EventTimeline'
-import type { EventState, WSEvent, LobsterProfile, Pairing, DateMessage, DateRating } from './types'
+import type { EventState, WSEvent, RegisteredAgent, Pairing, DateMessage, DateRating } from './types'
 
 const INITIAL_STATE: EventState = {
   phase: 'registration',
-  lobsters: [],
+  agents: [],
   pairings: [],
   dates: [],
 }
@@ -31,15 +32,23 @@ export default function App() {
     switch (type) {
       case 'state_sync':
         setState(data as EventState)
-        addTimeline('Connected to event')
+        addTimeline('Connected to platform')
         break
 
       case 'registration':
         setState(prev => ({
           ...prev,
-          lobsters: [...prev.lobsters.filter(l => l.id !== data.id), data as LobsterProfile],
+          agents: [...prev.agents.filter(a => a.id !== data.id), data as RegisteredAgent],
         }))
-        addTimeline(`${data.avatar_emoji} ${data.name} joined!`)
+        addTimeline(`${data.avatar_emoji || '🦞'} ${data.name} joined!`)
+        break
+
+      case 'unregistration':
+        setState(prev => ({
+          ...prev,
+          agents: prev.agents.filter(a => a.id !== data.id),
+        }))
+        addTimeline(`Agent left`)
         break
 
       case 'phase_change':
@@ -49,7 +58,7 @@ export default function App() {
 
       case 'matchmaker_announcement':
         setAnnouncement(data.text)
-        addTimeline('Matchmaker speaks!')
+        addTimeline('Mama Matchmaker speaks!')
         break
 
       case 'pairing_revealed':
@@ -57,11 +66,11 @@ export default function App() {
           ...prev,
           pairings: [...prev.pairings, data as Pairing],
         }))
-        addTimeline(`Matched: ${data.lobster_a.name} x ${data.lobster_b.name}`)
+        addTimeline(`Matched: ${data.agent_a.name} x ${data.agent_b.name}`)
         break
 
       case 'date_start':
-        addTimeline(`Date started: ${data.lobster_a.name} x ${data.lobster_b.name}`)
+        addTimeline(`Date: ${data.agent_a.name} x ${data.agent_b.name}`)
         break
 
       case 'date_message':
@@ -72,10 +81,12 @@ export default function App() {
         break
 
       case 'date_complete':
-        setDateRatings(prev => ({
-          ...prev,
-          [data.date_id]: data.ratings as DateRating[],
-        }))
+        if (data.ratings) {
+          setDateRatings(prev => ({
+            ...prev,
+            [data.date_id]: data.ratings as DateRating[],
+          }))
+        }
         addTimeline('Date completed!')
         break
 
@@ -104,34 +115,39 @@ export default function App() {
             龙虾相亲大会
             <span style={styles.lobsterIcon}>🦞</span>
           </h1>
-          <p style={styles.subtitle}>Claw Dating Convention — Where Lobsters Find Love</p>
+          <p style={styles.subtitle}>Open A2A Dating Platform — Where Agents Find Love</p>
           <div style={styles.statusBar}>
             <span style={{
               ...styles.statusDot,
               backgroundColor: connected ? '#4ade80' : '#f87171',
             }} />
             <span>{connected ? 'Connected' : 'Connecting...'}</span>
-            <span style={styles.phase}>Phase: {state.phase}</span>
-            <span style={styles.count}>{state.lobsters.length} Lobsters</span>
+            <span style={styles.phase}>{state.phase}</span>
+            <span style={styles.count}>{state.agents.length} Agents Online</span>
           </div>
         </div>
       </header>
 
       <div style={styles.main}>
-        {/* Sidebar Timeline */}
+        {/* Sidebar */}
         <aside style={styles.sidebar}>
           <EventTimeline events={timeline} />
-          {state.phase === 'registration' && state.lobsters.length >= 2 && (
+          {state.phase === 'registration' && state.agents.length >= 2 && (
             <button style={styles.startButton} onClick={startEvent}>
-              Start Event!
+              Start Dating Event!
             </button>
           )}
         </aside>
 
         {/* Main Content */}
         <div style={styles.content}>
-          {/* Registration / Lobster Pool */}
-          <LobsterPool lobsters={state.lobsters} />
+          {/* Registration Form */}
+          {state.phase === 'registration' && (
+            <RegisterAgent onRegistered={() => {}} />
+          )}
+
+          {/* Agent Lobby */}
+          <LobsterPool lobsters={state.agents} />
 
           {/* Matchmaker Announcement */}
           {announcement && (
@@ -151,22 +167,16 @@ export default function App() {
             <div>
               <h2 style={styles.sectionTitle}>Live Dates</h2>
               {Object.entries(activeDateMessages).map(([dateId, messages]) => {
-                const pairing = state.pairings.find(p => {
-                  const a = p.lobster_a
-                  const b = p.lobster_b
-                  return messages.some(m => m.sender_id === a.id) &&
-                         messages.some(m => m.sender_id === b.id)
-                }) || (messages.length > 0 ? state.pairings.find(p =>
-                  p.lobster_a.id === messages[0].sender_id || p.lobster_b.id === messages[0].sender_id
-                ) : undefined)
-
+                const pairing = state.pairings.find(p =>
+                  messages.some(m => m.sender_id === p.agent_a.id || m.sender_id === p.agent_b.id)
+                )
                 return (
                   <DateRoom
                     key={dateId}
                     messages={messages}
                     ratings={dateRatings[dateId]}
-                    lobsterA={pairing?.lobster_a}
-                    lobsterB={pairing?.lobster_b}
+                    agentA={pairing?.agent_a}
+                    agentB={pairing?.agent_b}
                   />
                 )
               })}
@@ -198,6 +208,12 @@ const globalStyles = `
     color: #e2e8f0;
     min-height: 100vh;
   }
+  code {
+    background: rgba(255,255,255,0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -213,9 +229,7 @@ const globalStyles = `
 `
 
 const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-  },
+  container: { minHeight: '100vh' },
   header: {
     background: 'linear-gradient(90deg, #dc2626, #b91c1c, #991b1b)',
     padding: '20px 0',
@@ -225,101 +239,47 @@ const styles: Record<string, React.CSSProperties> = {
     top: 0,
     zIndex: 100,
   },
-  headerContent: {
-    maxWidth: 1200,
-    margin: '0 auto',
-    padding: '0 20px',
-  },
+  headerContent: { maxWidth: 1200, margin: '0 auto', padding: '0 20px' },
   title: {
-    fontSize: 36,
-    fontWeight: 800,
-    color: '#fff',
+    fontSize: 36, fontWeight: 800, color: '#fff',
     textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
   },
-  lobsterIcon: {
-    fontSize: 40,
-    margin: '0 10px',
-  },
-  subtitle: {
-    color: '#fecaca',
-    fontSize: 14,
-    marginTop: 4,
-  },
+  lobsterIcon: { fontSize: 40, margin: '0 10px' },
+  subtitle: { color: '#fecaca', fontSize: 14, marginTop: 4 },
   statusBar: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 16,
-    marginTop: 10,
-    fontSize: 13,
-    color: '#fecaca',
-    alignItems: 'center',
+    display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10,
+    fontSize: 13, color: '#fecaca', alignItems: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    display: 'inline-block',
+    width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
   },
   phase: {
-    background: 'rgba(255,255,255,0.15)',
-    padding: '2px 10px',
-    borderRadius: 12,
-    fontSize: 12,
+    background: 'rgba(255,255,255,0.15)', padding: '2px 10px',
+    borderRadius: 12, fontSize: 12,
   },
   count: {
-    background: 'rgba(255,255,255,0.15)',
-    padding: '2px 10px',
-    borderRadius: 12,
-    fontSize: 12,
+    background: 'rgba(255,255,255,0.15)', padding: '2px 10px',
+    borderRadius: 12, fontSize: 12,
   },
   main: {
-    display: 'flex',
-    maxWidth: 1400,
-    margin: '0 auto',
-    padding: 20,
-    gap: 20,
+    display: 'flex', maxWidth: 1400, margin: '0 auto', padding: 20, gap: 20,
   },
-  sidebar: {
-    width: 280,
-    flexShrink: 0,
-  },
-  content: {
-    flex: 1,
-    minWidth: 0,
-  },
+  sidebar: { width: 280, flexShrink: 0 },
+  content: { flex: 1, minWidth: 0 },
   startButton: {
-    width: '100%',
-    padding: '14px 20px',
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#fff',
-    background: 'linear-gradient(135deg, #dc2626, #ea580c)',
-    border: 'none',
-    borderRadius: 12,
-    cursor: 'pointer',
-    marginTop: 16,
+    width: '100%', padding: '14px 20px', fontSize: 18, fontWeight: 700,
+    color: '#fff', background: 'linear-gradient(135deg, #dc2626, #ea580c)',
+    border: 'none', borderRadius: 12, cursor: 'pointer', marginTop: 16,
     animation: 'pulse 2s infinite',
   },
   announcement: {
     background: 'linear-gradient(135deg, rgba(220,38,38,0.2), rgba(234,88,12,0.2))',
-    border: '1px solid rgba(239,68,68,0.3)',
-    borderRadius: 16,
-    padding: 20,
-    margin: '20px 0',
-    textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 1.6,
-    animation: 'fadeInUp 0.5s ease',
+    border: '1px solid rgba(239,68,68,0.3)', borderRadius: 16,
+    padding: 20, margin: '20px 0', textAlign: 'center',
+    fontSize: 16, lineHeight: 1.6, animation: 'fadeInUp 0.5s ease',
   },
-  announcementIcon: {
-    fontSize: 40,
-    display: 'block',
-    marginBottom: 8,
-  },
+  announcementIcon: { fontSize: 40, display: 'block', marginBottom: 8 },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: 700,
-    margin: '24px 0 16px',
-    color: '#fbbf24',
+    fontSize: 22, fontWeight: 700, margin: '24px 0 16px', color: '#fbbf24',
   },
 }

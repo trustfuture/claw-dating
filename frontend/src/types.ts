@@ -1,21 +1,24 @@
-export interface LobsterProfile {
+export interface RegisteredAgent {
   id: string
+  agent_url: string
+  agent_card: Record<string, any>
   name: string
-  name_cn: string
-  personality_type: string
-  catchphrase: string
-  interests: string[]
-  deal_breakers: string[]
-  love_language: string
+  description: string
   avatar_emoji: string
-  port: number
-  url: string
+  personality_type: string
+  interests: string[]
+  catchphrase: string
+  love_language: string
+  name_cn: string
+  is_demo: boolean
+  status: string  // online, offline, in_date
+  registered_at: string
 }
 
 export interface Pairing {
   id: string
-  lobster_a: LobsterProfile
-  lobster_b: LobsterProfile
+  agent_a: RegisteredAgent
+  agent_b: RegisteredAgent
   compatibility_score: number
   reasoning: string
 }
@@ -29,8 +32,8 @@ export interface DateMessage {
 }
 
 export interface DateRating {
-  lobster_id: string
-  lobster_name: string
+  agent_id: string
+  agent_name: string
   score: number
   comment: string
 }
@@ -39,7 +42,7 @@ export interface DateSession {
   id: string
   pairing: Pairing
   messages: DateMessage[]
-  status: 'pending' | 'in_progress' | 'rating' | 'completed'
+  status: 'pending' | 'in_progress' | 'rating' | 'completed' | 'failed'
   ratings: DateRating[]
 }
 
@@ -47,7 +50,7 @@ export type EventPhase = 'registration' | 'matching' | 'dating' | 'results'
 
 export interface EventState {
   phase: EventPhase
-  lobsters: LobsterProfile[]
+  agents: RegisteredAgent[]
   pairings: Pairing[]
   dates: DateSession[]
 }

@@ -1,46 +1,59 @@
-import type { LobsterProfile } from '../types'
+import type { RegisteredAgent } from '../types'
 
-export function LobsterPool({ lobsters }: { lobsters: LobsterProfile[] }) {
+export function LobsterPool({ lobsters }: { lobsters: RegisteredAgent[] }) {
   if (lobsters.length === 0) {
     return (
       <div style={styles.empty}>
         <div style={styles.emptyIcon}>🦞</div>
-        <p>Waiting for lobsters to join...</p>
-        <p style={styles.emptyHint}>Start the agents to begin registration</p>
+        <p>Waiting for agents to join...</p>
+        <p style={styles.emptyHint}>Register your A2A agent above to enter the dating pool</p>
       </div>
     )
   }
 
   return (
     <div>
-      <h2 style={styles.title}>Single Lobsters</h2>
+      <h2 style={styles.title}>Lobby — {lobsters.length} Agents</h2>
       <div style={styles.grid}>
-        {lobsters.map((lobster, i) => (
-          <LobsterCard key={lobster.id} lobster={lobster} delay={i * 100} />
+        {lobsters.map((agent, i) => (
+          <AgentCard key={agent.id} agent={agent} delay={i * 100} />
         ))}
       </div>
     </div>
   )
 }
 
-function LobsterCard({ lobster, delay }: { lobster: LobsterProfile; delay: number }) {
+function AgentCard({ agent, delay }: { agent: RegisteredAgent; delay: number }) {
   return (
     <div style={{
       ...styles.card,
       animationDelay: `${delay}ms`,
     }}>
-      <div style={styles.avatar}>{lobster.avatar_emoji}</div>
-      <h3 style={styles.name}>{lobster.name}</h3>
-      <p style={styles.nameCn}>{lobster.name_cn}</p>
-      <span style={styles.personality}>{lobster.personality_type}</span>
-      <p style={styles.catchphrase}>"{lobster.catchphrase}"</p>
+      <div style={styles.cardHeader}>
+        <div style={styles.avatar}>{agent.avatar_emoji || '🦞'}</div>
+        <span style={{
+          ...styles.statusDot,
+          background: agent.status === 'online' ? '#4ade80' : '#f87171',
+        }} />
+      </div>
+      <h3 style={styles.name}>{agent.name}</h3>
+      {agent.name_cn && <p style={styles.nameCn}>{agent.name_cn}</p>}
+      {agent.personality_type && (
+        <span style={styles.personality}>{agent.personality_type}</span>
+      )}
+      {agent.catchphrase && (
+        <p style={styles.catchphrase}>"{agent.catchphrase}"</p>
+      )}
       <div style={styles.tags}>
-        {lobster.interests.slice(0, 3).map(tag => (
+        {agent.interests.slice(0, 3).map(tag => (
           <span key={tag} style={styles.tag}>{tag}</span>
         ))}
       </div>
-      <div style={styles.loveLanguage}>
-        <span style={styles.heartIcon}>💝</span> {lobster.love_language}
+      {agent.love_language && (
+        <div style={styles.loveLanguage}>💝 {agent.love_language}</div>
+      )}
+      <div style={styles.agentUrl}>
+        {agent.is_demo ? '📦 Demo' : '🌐'} {new URL(agent.agent_url).host}
       </div>
     </div>
   )
@@ -66,12 +79,25 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.1)',
     animation: 'fadeInUp 0.5s ease both',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    cursor: 'default',
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    position: 'relative',
+    marginBottom: 8,
   },
   avatar: {
     fontSize: 48,
     textAlign: 'center',
-    marginBottom: 8,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    position: 'absolute',
+    top: 0,
+    right: 0,
   },
   name: {
     fontSize: 18,
@@ -123,9 +149,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     color: '#f9a8d4',
     textAlign: 'center',
+    marginBottom: 8,
   },
-  heartIcon: {
-    fontSize: 12,
+  agentUrl: {
+    fontSize: 10,
+    color: '#64748b',
+    textAlign: 'center',
+    fontFamily: 'monospace',
   },
   empty: {
     textAlign: 'center',

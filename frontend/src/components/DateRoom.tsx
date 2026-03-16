@@ -1,27 +1,27 @@
-import type { DateMessage, DateRating, LobsterProfile } from '../types'
+import type { DateMessage, DateRating, RegisteredAgent } from '../types'
 
 interface Props {
   messages: DateMessage[]
   ratings?: DateRating[]
-  lobsterA?: LobsterProfile
-  lobsterB?: LobsterProfile
+  agentA?: RegisteredAgent
+  agentB?: RegisteredAgent
 }
 
-export function DateRoom({ messages, ratings, lobsterA, lobsterB }: Props) {
-  const nameA = lobsterA?.name || messages[0]?.sender_name || 'Lobster A'
-  const nameB = lobsterB?.name || (messages.find(m => m.sender_name !== nameA)?.sender_name || 'Lobster B')
+export function DateRoom({ messages, ratings, agentA, agentB }: Props) {
+  const nameA = agentA?.name || messages[0]?.sender_name || 'Lobster A'
+  const nameB = agentB?.name || (messages.find(m => m.sender_name !== nameA)?.sender_name || 'Lobster B')
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.participant}>
-          <span style={styles.participantEmoji}>{lobsterA?.avatar_emoji || '🦞'}</span>
+          <span style={styles.participantEmoji}>{agentA?.avatar_emoji || '🦞'}</span>
           <span>{nameA}</span>
         </div>
         <span style={styles.vs}>VS</span>
         <div style={styles.participant}>
-          <span style={styles.participantEmoji}>{lobsterB?.avatar_emoji || '🦞'}</span>
+          <span style={styles.participantEmoji}>{agentB?.avatar_emoji || '🦞'}</span>
           <span>{nameB}</span>
         </div>
       </div>
@@ -29,7 +29,7 @@ export function DateRoom({ messages, ratings, lobsterA, lobsterB }: Props) {
       {/* Messages */}
       <div style={styles.messages}>
         {messages.map((msg, i) => {
-          const isA = msg.sender_id === lobsterA?.id || msg.sender_name === nameA
+          const isA = msg.sender_id === agentA?.id || msg.sender_name === nameA
           return (
             <div key={i} style={{
               ...styles.bubble,
@@ -53,11 +53,11 @@ export function DateRoom({ messages, ratings, lobsterA, lobsterB }: Props) {
           <div style={styles.ratingsTitle}>Date Ratings</div>
           <div style={styles.ratingCards}>
             {ratings.map(r => (
-              <div key={r.lobster_id} style={styles.ratingCard}>
+              <div key={r.agent_id} style={styles.ratingCard}>
                 <div style={styles.ratingScore}>
                   {r.score}<span style={styles.ratingOutOf}>/10</span>
                 </div>
-                <div style={styles.ratingName}>{r.lobster_name}</div>
+                <div style={styles.ratingName}>{r.agent_name}</div>
                 <div style={styles.ratingComment}>{r.comment}</div>
               </div>
             ))}

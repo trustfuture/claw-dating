@@ -12,9 +12,9 @@ export function MatchReveal({ pairings }: { pairings: Pairing[] }) {
           }}>
             <div style={styles.matchHeader}>
               <div style={styles.lobsterSide}>
-                <span style={styles.avatar}>{pairing.lobster_a.avatar_emoji}</span>
-                <span style={styles.matchName}>{pairing.lobster_a.name}</span>
-                <span style={styles.matchNameCn}>{pairing.lobster_a.name_cn}</span>
+                <span style={styles.avatar}>{pairing.agent_a.avatar_emoji || '🦞'}</span>
+                <span style={styles.matchName}>{pairing.agent_a.name}</span>
+                <span style={styles.matchNameCn}>{pairing.agent_a.name_cn}</span>
               </div>
 
               <div style={styles.heartCenter}>
@@ -25,9 +25,9 @@ export function MatchReveal({ pairings }: { pairings: Pairing[] }) {
               </div>
 
               <div style={styles.lobsterSide}>
-                <span style={styles.avatar}>{pairing.lobster_b.avatar_emoji}</span>
-                <span style={styles.matchName}>{pairing.lobster_b.name}</span>
-                <span style={styles.matchNameCn}>{pairing.lobster_b.name_cn}</span>
+                <span style={styles.avatar}>{pairing.agent_b.avatar_emoji || '🦞'}</span>
+                <span style={styles.matchName}>{pairing.agent_b.name}</span>
+                <span style={styles.matchNameCn}>{pairing.agent_b.name_cn}</span>
               </div>
             </div>
 

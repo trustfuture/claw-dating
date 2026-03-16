@@ -1,5 +1,7 @@
 """In-memory event bus for broadcasting real-time events to WebSocket clients."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 from fastapi import WebSocket
@@ -21,7 +23,7 @@ class EventBus:
                 self.clients.remove(ws)
 
     async def broadcast(self, event_type: str, data: dict):
-        message = json.dumps({"type": event_type, "data": data}, ensure_ascii=False)
+        message = json.dumps({"type": event_type, "data": data}, ensure_ascii=False, default=str)
         async with self._lock:
             dead = []
             for ws in self.clients:

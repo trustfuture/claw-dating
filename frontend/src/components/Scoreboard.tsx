@@ -19,7 +19,7 @@ export function Scoreboard({ dates, pairings }: Props) {
         ? d.ratings.reduce((s, r) => s + r.score, 0) / d.ratings.length
         : 0
       const pairing = pairings.find(p =>
-        d.messages.some(m => m.sender_id === p.lobster_a.id || m.sender_id === p.lobster_b.id)
+        d.messages.some(m => m.sender_id === p.agent_a.id || m.sender_id === p.agent_b.id)
       )
       return { ...d, avg, pairing }
     })
@@ -37,11 +37,11 @@ export function Scoreboard({ dates, pairings }: Props) {
           <div style={styles.awardEmoji}>🏆</div>
           <div style={styles.awardTitle}>Best Couple / 最佳情侣</div>
           <div style={styles.awardCouple}>
-            <span style={styles.awardAvatar}>{best.pairing.lobster_a.avatar_emoji}</span>
-            <span style={styles.awardName}>{best.pairing.lobster_a.name}</span>
+            <span style={styles.awardAvatar}>{best.pairing.agent_a.avatar_emoji}</span>
+            <span style={styles.awardName}>{best.pairing.agent_a.name}</span>
             <span style={styles.awardHeart}>❤️</span>
-            <span style={styles.awardName}>{best.pairing.lobster_b.name}</span>
-            <span style={styles.awardAvatar}>{best.pairing.lobster_b.avatar_emoji}</span>
+            <span style={styles.awardName}>{best.pairing.agent_b.name}</span>
+            <span style={styles.awardAvatar}>{best.pairing.agent_b.avatar_emoji}</span>
           </div>
           <div style={styles.awardScore}>{best.avg.toFixed(1)} / 10</div>
         </div>
@@ -65,7 +65,7 @@ export function Scoreboard({ dates, pairings }: Props) {
               {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
             </span>
             <span style={styles.col2}>
-              {d.pairing ? `${d.pairing.lobster_a.name} × ${d.pairing.lobster_b.name}` : 'Unknown'}
+              {d.pairing ? `${d.pairing.agent_a.name} × ${d.pairing.agent_b.name}` : 'Unknown'}
             </span>
             <span style={styles.col3}>
               {d.pairing?.compatibility_score || '—'}
