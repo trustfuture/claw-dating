@@ -85,14 +85,16 @@ class AgentRegistry:
         self.pending_messages[agent_id].append(message)
 
     def get_pending_messages(self, agent_id: str) -> list[PendingMessage]:
-        """Get and clear pending messages for a polling agent."""
-        msgs = self.pending_messages.get(agent_id, [])
-        self.pending_messages[agent_id] = []
-        return msgs
+        """Get pending messages (does NOT clear — messages removed on response)."""
+        return list(self.pending_messages.get(agent_id, []))
 
     def submit_response(self, message_id: str, response_text: str):
-        """Submit a response from a polling agent."""
+        """Submit a response and remove the message from queue."""
         import asyncio
+        # Remove from pending queue
+        for agent_id, msgs in self.pending_messages.items():
+            self.pending_messages[agent_id] = [m for m in msgs if m.message_id != message_id]
+        # Set response
         self.responses[message_id] = response_text
         event = self._response_events.get(message_id)
         if event and isinstance(event, asyncio.Event):

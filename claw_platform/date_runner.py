@@ -11,9 +11,9 @@ import uuid
 
 from claw_platform.models import (
     Pairing, DateSession, DateMessage, DateRating, DateStatus,
-    RegisteredAgent, PendingMessage,
+    RegisteredAgent, PendingMessage, MutualMatch,
 )
-from claw_platform.config import DATE_TURNS
+from claw_platform.config import DATE_TURNS, MUTUAL_MATCH_THRESHOLD
 from claw_platform.a2a_client import send_message
 from claw_platform.event_bus import event_bus
 
@@ -26,6 +26,7 @@ async def run_date(pairing: Pairing) -> DateSession:
         id=str(uuid.uuid4()),
         pairing=pairing,
         status=DateStatus.IN_PROGRESS,
+        round=pairing.round,
     )
 
     a = pairing.agent_a
@@ -33,6 +34,7 @@ async def run_date(pairing: Pairing) -> DateSession:
 
     await event_bus.broadcast("date_start", {
         "date_id": date_session.id,
+        "round": pairing.round,
         "agent_a": a.dict(),
         "agent_b": b.dict(),
     })
@@ -45,7 +47,7 @@ async def run_date(pairing: Pairing) -> DateSession:
         a_response = await _send_to_agent(
             registry, a,
             f"Partner: {b.name}\n"
-            f"You're at the 龙虾相亲大会 (Lobster Dating Convention). "
+            f"You're at the \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A (Lobster Dating Convention). "
             f"You've been matched with {b.name}. Say hello and introduce yourself!",
             context_a, date_session.id,
         )
@@ -57,7 +59,7 @@ async def run_date(pairing: Pairing) -> DateSession:
         b_response = await _send_to_agent(
             registry, b,
             f"Partner: {a.name}\n"
-            f"You're at the 龙虾相亲大会. {a.name} says: \"{a_response}\"",
+            f"You're at the \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A. {a.name} says: \"{a_response}\"",
             context_b, date_session.id,
         )
         msg = DateMessage(sender_id=b.id, sender_name=b.name, content=b_response, turn=2)
@@ -96,7 +98,8 @@ async def run_date(pairing: Pairing) -> DateSession:
             f"Format: SCORE: [number]\nCOMMENT: [your comment]",
             context_a, date_session.id, is_rating=True,
         )
-        date_session.ratings.append(_parse_rating(a.id, a.name, a_rating_text))
+        rating_a = _parse_rating(a.id, a.name, a_rating_text)
+        date_session.ratings.append(rating_a)
 
         b_rating_text = await _send_to_agent(
             registry, b,
@@ -105,7 +108,20 @@ async def run_date(pairing: Pairing) -> DateSession:
             f"Format: SCORE: [number]\nCOMMENT: [your comment]",
             context_b, date_session.id, is_rating=True,
         )
-        date_session.ratings.append(_parse_rating(b.id, b.name, b_rating_text))
+        rating_b = _parse_rating(b.id, b.name, b_rating_text)
+        date_session.ratings.append(rating_b)
+
+        # Check for mutual match
+        if rating_a.score >= MUTUAL_MATCH_THRESHOLD and rating_b.score >= MUTUAL_MATCH_THRESHOLD:
+            mutual = MutualMatch(
+                date_id=date_session.id,
+                agent_a=a,
+                agent_b=b,
+                score_a=rating_a.score,
+                score_b=rating_b.score,
+                combined_score=rating_a.score + rating_b.score,
+            )
+            await event_bus.broadcast("mutual_match", mutual.dict())
 
         date_session.status = DateStatus.COMPLETED
 

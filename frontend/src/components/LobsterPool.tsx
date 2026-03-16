@@ -1,22 +1,17 @@
 import type { RegisteredAgent } from '../types'
 
-export function LobsterPool({ lobsters }: { lobsters: RegisteredAgent[] }) {
-  if (lobsters.length === 0) {
-    return (
-      <div style={styles.empty}>
-        <div style={styles.emptyIcon}>🦞</div>
-        <p>Waiting for agents to join...</p>
-        <p style={styles.emptyHint}>Register your A2A agent above to enter the dating pool</p>
-      </div>
-    )
-  }
+export function LobsterPool({ agents }: { agents: RegisteredAgent[] }) {
+  if (agents.length === 0) return null
 
   return (
-    <div>
-      <h2 style={styles.title}>Lobby — {lobsters.length} Agents</h2>
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Lobby</h2>
+        <span style={styles.count}>{agents.length} agent{agents.length !== 1 ? 's' : ''}</span>
+      </div>
       <div style={styles.grid}>
-        {lobsters.map((agent, i) => (
-          <AgentCard key={agent.id} agent={agent} delay={i * 100} />
+        {agents.map((agent, i) => (
+          <AgentCard key={agent.id} agent={agent} delay={i * 80} />
         ))}
       </div>
     </div>
@@ -24,17 +19,31 @@ export function LobsterPool({ lobsters }: { lobsters: RegisteredAgent[] }) {
 }
 
 function AgentCard({ agent, delay }: { agent: RegisteredAgent; delay: number }) {
+  let hostDisplay = ''
+  if (agent.agent_url) {
+    try {
+      hostDisplay = new URL(agent.agent_url).host
+    } catch {
+      hostDisplay = agent.agent_url
+    }
+  }
+
+  const mode = agent.agent_url ? 'A2A' : 'Polling'
+
   return (
     <div style={{
       ...styles.card,
       animationDelay: `${delay}ms`,
     }}>
-      <div style={styles.cardHeader}>
-        <div style={styles.avatar}>{agent.avatar_emoji || '🦞'}</div>
-        <span style={{
-          ...styles.statusDot,
-          background: agent.status === 'online' ? '#4ade80' : '#f87171',
-        }} />
+      <div style={styles.cardTop}>
+        <div style={styles.avatar}>{agent.avatar_emoji || '\uD83E\uDD9E'}</div>
+        <div style={styles.modeBadge}>
+          <span style={{
+            ...styles.modeDot,
+            background: mode === 'A2A' ? '#6366f1' : '#22c55e',
+          }} />
+          {mode}
+        </div>
       </div>
       <h3 style={styles.name}>{agent.name}</h3>
       {agent.name_cn && <p style={styles.nameCn}>{agent.name_cn}</p>}
@@ -45,88 +54,105 @@ function AgentCard({ agent, delay }: { agent: RegisteredAgent; delay: number }) 
         <p style={styles.catchphrase}>"{agent.catchphrase}"</p>
       )}
       <div style={styles.tags}>
-        {agent.interests.slice(0, 3).map(tag => (
+        {(agent.interests || []).slice(0, 4).map(tag => (
           <span key={tag} style={styles.tag}>{tag}</span>
         ))}
       </div>
       {agent.love_language && (
-        <div style={styles.loveLanguage}>💝 {agent.love_language}</div>
+        <div style={styles.loveLanguage}>{'\uD83D\uDC9D'} {agent.love_language}</div>
       )}
-      <div style={styles.agentUrl}>
-        {agent.is_demo ? '📦 Demo' : '🌐'} {new URL(agent.agent_url).host}
-      </div>
+      {hostDisplay && (
+        <div style={styles.agentUrl}>{hostDisplay}</div>
+      )}
     </div>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  title: {
-    fontSize: 22,
-    fontWeight: 700,
+  container: {
+    marginBottom: 28,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
-    color: '#fbbf24',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#e2e8f0',
+  },
+  count: {
+    fontSize: 12,
+    color: '#64748b',
+    background: 'rgba(255,255,255,0.04)',
+    padding: '4px 12px',
+    borderRadius: 20,
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-    gap: 16,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+    gap: 14,
   },
   card: {
-    background: 'rgba(255,255,255,0.08)',
-    backdropFilter: 'blur(10px)',
+    background: 'rgba(255,255,255,0.03)',
     borderRadius: 16,
     padding: 20,
-    border: '1px solid rgba(255,255,255,0.1)',
-    animation: 'fadeInUp 0.5s ease both',
-    transition: 'transform 0.2s, box-shadow 0.2s',
+    border: '1px solid rgba(255,255,255,0.06)',
+    animation: 'fadeInUp 0.4s ease both',
+    transition: 'border-color 0.2s, background 0.2s',
   },
-  cardHeader: {
+  cardTop: {
     display: 'flex',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    position: 'relative',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   avatar: {
-    fontSize: 48,
-    textAlign: 'center',
+    fontSize: 40,
   },
-  statusDot: {
-    width: 10,
-    height: 10,
+  modeBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 10,
+    color: '#64748b',
+    background: 'rgba(255,255,255,0.04)',
+    padding: '3px 8px',
+    borderRadius: 8,
+    fontWeight: 500,
+  },
+  modeDot: {
+    width: 5,
+    height: 5,
     borderRadius: '50%',
-    position: 'absolute',
-    top: 0,
-    right: 0,
   },
   name: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
-    textAlign: 'center',
     color: '#fff',
+    marginBottom: 2,
   },
   nameCn: {
-    fontSize: 13,
-    textAlign: 'center',
-    color: '#94a3b8',
+    fontSize: 12,
+    color: '#64748b',
     marginBottom: 8,
   },
   personality: {
-    display: 'block',
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#fbbf24',
-    background: 'rgba(251,191,36,0.15)',
-    padding: '3px 12px',
+    display: 'inline-block',
+    fontSize: 11,
+    color: '#f472b6',
+    background: 'rgba(244,114,182,0.1)',
+    padding: '3px 10px',
     borderRadius: 20,
-    margin: '0 auto 10px',
-    width: 'fit-content',
+    marginBottom: 10,
+    fontWeight: 500,
   },
   catchphrase: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: '#cbd5e1',
-    textAlign: 'center',
+    color: '#94a3b8',
     lineHeight: 1.4,
     marginBottom: 12,
     minHeight: 34,
@@ -135,41 +161,25 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 4,
-    justifyContent: 'center',
     marginBottom: 10,
   },
   tag: {
-    fontSize: 11,
-    background: 'rgba(99,102,241,0.2)',
+    fontSize: 10,
+    background: 'rgba(99,102,241,0.1)',
     color: '#a5b4fc',
     padding: '2px 8px',
-    borderRadius: 10,
+    borderRadius: 8,
+    fontWeight: 500,
   },
   loveLanguage: {
     fontSize: 11,
     color: '#f9a8d4',
-    textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   agentUrl: {
     fontSize: 10,
-    color: '#64748b',
-    textAlign: 'center',
-    fontFamily: 'monospace',
-  },
-  empty: {
-    textAlign: 'center',
-    padding: 60,
-    color: '#64748b',
-  },
-  emptyIcon: {
-    fontSize: 80,
-    marginBottom: 16,
-    opacity: 0.5,
-  },
-  emptyHint: {
-    fontSize: 13,
-    marginTop: 8,
-    color: '#475569',
+    color: '#334155',
+    fontFamily: "'SF Mono', 'Fira Code', monospace",
+    marginTop: 4,
   },
 }

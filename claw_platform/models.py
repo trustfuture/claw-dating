@@ -14,7 +14,7 @@ class RegisteredAgent(BaseModel):
     # Extracted from Agent Card for quick access:
     name: str = "Unknown Agent"
     description: str = ""
-    avatar_emoji: str = "🦞"
+    avatar_emoji: str = "\U0001F99E"
     personality_type: str = ""
     interests: list[str] = []
     catchphrase: str = ""
@@ -39,7 +39,7 @@ class ProfileData(BaseModel):
     deal_breakers: list[str] = []
     love_language: str = ""
     catchphrase: str = ""
-    avatar_emoji: str = "🦞"
+    avatar_emoji: str = "\U0001F99E"
     name_cn: str = ""
 
 
@@ -66,6 +66,17 @@ class Pairing(BaseModel):
     agent_b: RegisteredAgent
     compatibility_score: int = 0
     reasoning: str = ""
+    round: int = 1  # Which round of speed dating
+
+
+class MutualMatch(BaseModel):
+    """Both agents rated each other above the threshold."""
+    date_id: str
+    agent_a: RegisteredAgent
+    agent_b: RegisteredAgent
+    score_a: int
+    score_b: int
+    combined_score: int = 0
 
 
 class DateMessage(BaseModel):
@@ -97,6 +108,7 @@ class DateSession(BaseModel):
     messages: list[DateMessage] = []
     status: DateStatus = DateStatus.PENDING
     ratings: list[DateRating] = []
+    round: int = 1
 
 
 class EventPhase(str, Enum):
@@ -107,7 +119,13 @@ class EventPhase(str, Enum):
 
 
 class EventState(BaseModel):
+    event_id: str = "default"
+    name: str = ""
     phase: EventPhase = EventPhase.REGISTRATION
     agents: list[RegisteredAgent] = []
     pairings: list[Pairing] = []
     dates: list[DateSession] = []
+    mutual_matches: list[MutualMatch] = []
+    current_round: int = 0
+    total_rounds: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())

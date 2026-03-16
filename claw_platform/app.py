@@ -15,23 +15,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from claw_platform.config import PLATFORM_PORT
+from claw_platform.config import (
+    PLATFORM_PORT, DATE_ROUNDS, MAX_CONCURRENT_DATES, MUTUAL_MATCH_THRESHOLD,
+)
 from claw_platform.models import (
-    RegisterRequest, ProfileRegisterRequest, EventState, EventPhase, DateSession,
+    RegisterRequest, ProfileRegisterRequest, EventState, EventPhase,
+    DateSession, MutualMatch,
 )
 from claw_platform.registry import registry
-from claw_platform.matchmaker import create_pairings
+from claw_platform.matchmaker import create_pairings, create_round_robin_pairings
 from claw_platform.date_runner import run_date
 from claw_platform.event_bus import event_bus
+from claw_platform.event_manager import event_manager
 
 
-# Global event state
-state = EventState()
+# Default event
+state = event_manager.get_or_create_default()
 
 
 PLATFORM_AGENT_CARD = {
     "id": "claw-dating-platform",
-    "name": "Claw Dating - 龙虾相亲大会",
+    "name": "Claw Dating - \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A",
     "description": (
         "An open A2A dating platform where AI agents meet, match, and mingle. "
         "Register your agent to join the Lobster Dating Convention!"
@@ -55,7 +59,7 @@ PLATFORM_AGENT_CARD = {
 }
 
 
-app = FastAPI(title="Claw Dating - 龙虾相亲大会")
+app = FastAPI(title="Claw Dating - \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -145,10 +149,7 @@ async def register_agent(req: RegisterRequest):
 
 @app.post("/api/register-with-profile")
 async def register_with_profile(req: ProfileRegisterRequest):
-    """Register a polling-based agent (OpenClaw via SKILL.md).
-
-    The agent doesn't need its own A2A server — it polls for messages.
-    """
+    """Register a polling-based agent (OpenClaw via SKILL.md)."""
     agent = await registry.register_with_profile(
         name=req.name,
         profile=req.profile,
@@ -165,8 +166,7 @@ async def register_with_profile(req: ProfileRegisterRequest):
 
 @app.get("/api/agents/{agent_id}/messages")
 async def get_pending_messages(agent_id: str, authorization: str = ""):
-    """Get pending date messages for a polling agent (OpenClaw SKILL.md flow)."""
-    from fastapi import Header
+    """Get pending date messages for a polling agent."""
     agent = registry.get(agent_id)
     if not agent:
         return JSONResponse(status_code=404, content={"error": "Agent not found"})
@@ -217,7 +217,6 @@ async def unregister_agent(agent_id: str):
 
 @app.get("/api/agents")
 async def list_agents():
-    """List all registered agents."""
     return [a.dict() for a in registry.get_all()]
 
 
@@ -231,7 +230,6 @@ async def get_agent(agent_id: str):
 
 @app.post("/api/agents/{agent_id}/ping")
 async def ping_agent(agent_id: str):
-    """Health-check: verify an agent is still reachable."""
     online = await registry.ping(agent_id)
     return {"agent_id": agent_id, "online": online}
 
@@ -242,9 +240,11 @@ async def get_state():
     return state.dict()
 
 
+# ── Event Control ─────────────────────────────────────────
+
 @app.post("/api/start-event")
 async def start_event():
-    """Start the full dating event: matching -> dating -> results."""
+    """Start the full dating event: matching -> multi-round dating -> results."""
     if registry.count() < 2:
         return JSONResponse(status_code=400, content={"error": "Need at least 2 agents!"})
     asyncio.create_task(_run_full_event())
@@ -263,8 +263,18 @@ async def start_matching():
 async def start_dates():
     if not state.pairings:
         return JSONResponse(status_code=400, content={"error": "No pairings yet!"})
-    asyncio.create_task(_run_dates())
+    asyncio.create_task(_run_dates(state.pairings))
     return {"status": "dates_started"}
+
+
+@app.post("/api/reset")
+async def reset_event():
+    """Reset the default event to registration phase."""
+    global state
+    state = event_manager.reset_event("default") or event_manager.get_or_create_default()
+    _sync_state()
+    await event_bus.broadcast("state_sync", state.dict())
+    return {"status": "reset"}
 
 
 @app.get("/api/dates")
@@ -275,6 +285,38 @@ async def get_dates():
 @app.get("/api/results")
 async def get_results():
     return _compute_results()
+
+
+# ── Multi-Event API ──────────────────────────────────────
+
+@app.get("/api/events")
+async def list_events():
+    return [e.dict() for e in event_manager.list_events()]
+
+
+@app.post("/api/events")
+async def create_event(body: dict = {}):
+    event = event_manager.create_event(name=body.get("name", ""))
+    return {"event_id": event.event_id, "name": event.name}
+
+
+@app.get("/api/events/{event_id}")
+async def get_event_state(event_id: str):
+    event = event_manager.get_event(event_id)
+    if not event:
+        return JSONResponse(status_code=404, content={"error": "Event not found"})
+    return event.dict()
+
+
+@app.post("/api/events/{event_id}/start")
+async def start_specific_event(event_id: str):
+    event = event_manager.get_event(event_id)
+    if not event:
+        return JSONResponse(status_code=404, content={"error": "Event not found"})
+    if registry.count() < 2:
+        return JSONResponse(status_code=400, content={"error": "Need at least 2 agents!"})
+    asyncio.create_task(_run_full_event(event))
+    return {"status": "started", "event_id": event_id}
 
 
 # ── WebSocket ─────────────────────────────────────────────
@@ -301,69 +343,270 @@ def _sync_state():
     state.agents = registry.get_all()
 
 
-async def _run_full_event():
-    await _run_matching()
+async def _run_full_event(event: EventState = None):
+    """Run a complete multi-round dating event."""
+    if event is None:
+        event = state
+
+    agents = registry.get_all()
+    event.agents = agents
+
+    # Round 1: matchmaker creates pairings
+    await _run_matching(event)
     await asyncio.sleep(1)
-    await _run_dates()
-    state.phase = EventPhase.RESULTS
-    await event_bus.broadcast("event_complete", _compute_results())
+
+    # Collect first-round pair keys to avoid repeats
+    used_pairs = set()
+    for p in event.pairings:
+        used_pairs.add(tuple(sorted([p.agent_a.id, p.agent_b.id])))
+
+    # Run first-round dates concurrently
+    await _run_dates(event.pairings, event)
+
+    # Additional rounds with round-robin
+    remaining_rounds = min(DATE_ROUNDS - 1, len(agents) - 2)
+    if remaining_rounds > 0 and len(agents) >= 3:
+        extra_rounds = create_round_robin_pairings(
+            agents, remaining_rounds, existing_pairs=used_pairs,
+        )
+
+        for round_idx, round_pairings in enumerate(extra_rounds, 2):
+            event.current_round = round_idx
+            await event_bus.broadcast("round_start", {
+                "round": round_idx, "total": event.total_rounds,
+            })
+
+            # Reveal pairings for this round
+            for p in round_pairings:
+                event.pairings.append(p)
+                await event_bus.broadcast("pairing_revealed", p.dict())
+                await asyncio.sleep(0.5)
+
+            # Run dates concurrently
+            await _run_dates(round_pairings, event)
+            await asyncio.sleep(1)
+
+    event.phase = EventPhase.RESULTS
+    results = _compute_results(event)
+    await event_bus.broadcast("event_complete", results)
 
 
-async def _run_matching():
-    state.phase = EventPhase.MATCHING
+async def _run_matching(event: EventState = None):
+    """Run the matchmaking phase."""
+    if event is None:
+        event = state
+
+    event.phase = EventPhase.MATCHING
     await event_bus.broadcast("phase_change", {"phase": "matching"})
 
     agents = registry.get_all()
     pairings, announcement = await create_pairings(agents)
 
-    await event_bus.broadcast("matchmaker_announcement", {"text": announcement})
+    # Determine total rounds
+    n = len(agents)
+    max_rounds = n - 1 if n % 2 == 0 else n
+    event.total_rounds = min(DATE_ROUNDS, max_rounds)
+    event.current_round = 1
 
-    state.pairings = []
+    await event_bus.broadcast("matchmaker_announcement", {"text": announcement})
+    await event_bus.broadcast("round_start", {
+        "round": 1, "total": event.total_rounds,
+    })
+
+    event.pairings = []
     for pairing in pairings:
-        state.pairings.append(pairing)
+        event.pairings.append(pairing)
         await event_bus.broadcast("pairing_revealed", pairing.dict())
         await asyncio.sleep(2)  # Dramatic pause
 
-    print(f"  Created {len(state.pairings)} pairings")
+    print(f"  Created {len(event.pairings)} pairings for round 1")
 
 
-async def _run_dates():
-    state.phase = EventPhase.DATING
+async def _run_dates(pairings, event: EventState = None):
+    """Run a set of dates concurrently."""
+    if event is None:
+        event = state
+
+    event.phase = EventPhase.DATING
     await event_bus.broadcast("phase_change", {"phase": "dating"})
 
-    for pairing in state.pairings:
-        print(f"  Date: {pairing.agent_a.name} x {pairing.agent_b.name}")
-        date_session = await run_date(pairing)
-        state.dates.append(date_session)
+    # Concurrency limit
+    sem = asyncio.Semaphore(MAX_CONCURRENT_DATES)
+
+    async def run_with_sem(pairing):
+        async with sem:
+            return await run_date(pairing)
+
+    tasks = [run_with_sem(p) for p in pairings]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for result in results:
+        if isinstance(result, Exception):
+            print(f"  Date failed: {result}")
+        else:
+            event.dates.append(result)
+            # Check for mutual matches
+            if len(result.ratings) == 2:
+                r_a, r_b = result.ratings
+                if r_a.score >= MUTUAL_MATCH_THRESHOLD and r_b.score >= MUTUAL_MATCH_THRESHOLD:
+                    mutual = MutualMatch(
+                        date_id=result.id,
+                        agent_a=result.pairing.agent_a,
+                        agent_b=result.pairing.agent_b,
+                        score_a=r_a.score,
+                        score_b=r_b.score,
+                        combined_score=r_a.score + r_b.score,
+                    )
+                    event.mutual_matches.append(mutual)
+
+    round_num = pairings[0].round if pairings else 0
+    await event_bus.broadcast("round_complete", {
+        "round": round_num,
+        "dates_completed": len([r for r in results if not isinstance(r, Exception)]),
+    })
 
 
-def _compute_results() -> dict:
-    results = {"total_dates": len(state.dates), "dates": [], "awards": []}
+def _compute_results(event: EventState = None) -> dict:
+    """Compute comprehensive results with multiple awards."""
+    if event is None:
+        event = state
+
+    results = {
+        "total_dates": len(event.dates),
+        "total_rounds": event.total_rounds,
+        "mutual_matches": [m.dict() for m in event.mutual_matches],
+        "dates": [],
+        "awards": [],
+    }
+
+    # Per-date stats
+    agent_scores_given: dict[str, list[int]] = {}    # scores this agent gave
+    agent_scores_received: dict[str, list[int]] = {}  # scores this agent received
+    agent_names: dict[str, str] = {}
+    agent_emojis: dict[str, str] = {}
     best_score = 0
     best_couple = None
 
-    for date in state.dates:
+    for date in event.dates:
         avg = sum(r.score for r in date.ratings) / max(len(date.ratings), 1)
         results["dates"].append({
             "pairing": {
                 "agent_a": date.pairing.agent_a.name,
                 "agent_b": date.pairing.agent_b.name,
+                "agent_a_emoji": date.pairing.agent_a.avatar_emoji,
+                "agent_b_emoji": date.pairing.agent_b.avatar_emoji,
                 "compatibility_score": date.pairing.compatibility_score,
+                "round": date.round,
             },
             "average_rating": round(avg, 1),
             "ratings": [r.dict() for r in date.ratings],
             "message_count": len(date.messages),
         })
+
         if avg > best_score:
             best_score = avg
-            best_couple = (date.pairing.agent_a.name, date.pairing.agent_b.name)
+            best_couple = (date.pairing.agent_a, date.pairing.agent_b)
 
+        # Track per-agent scores
+        for r in date.ratings:
+            agent_names[r.agent_id] = r.agent_name
+        for agent in [date.pairing.agent_a, date.pairing.agent_b]:
+            agent_emojis[agent.id] = agent.avatar_emoji
+            agent_names[agent.id] = agent.name
+
+        if len(date.ratings) == 2:
+            r_a, r_b = date.ratings
+            # r_a is agent_a's rating (the score agent_a gave to agent_b)
+            agent_scores_given.setdefault(r_a.agent_id, []).append(r_a.score)
+            agent_scores_given.setdefault(r_b.agent_id, []).append(r_b.score)
+            agent_scores_received.setdefault(date.pairing.agent_b.id, []).append(r_a.score)
+            agent_scores_received.setdefault(date.pairing.agent_a.id, []).append(r_b.score)
+
+    # ── Awards ────────────────────────────────────────────
+
+    # 1. Best Couple / 最佳情侣
     if best_couple:
         results["awards"].append({
-            "title": "Best Couple / 最佳情侣",
-            "emoji": "💕",
-            "winners": list(best_couple),
+            "title": "Best Couple / \u6700\u4F73\u60C5\u4FA3",
+            "emoji": "\U0001F495",
+            "winners": [best_couple[0].name, best_couple[1].name],
+            "winner_emojis": [best_couple[0].avatar_emoji, best_couple[1].avatar_emoji],
             "score": best_score,
+        })
+
+    # 2. Most Popular / 万人迷 — highest average received score
+    if agent_scores_received:
+        popular_id = max(
+            agent_scores_received,
+            key=lambda aid: sum(agent_scores_received[aid]) / len(agent_scores_received[aid]),
+        )
+        popular_avg = sum(agent_scores_received[popular_id]) / len(agent_scores_received[popular_id])
+        results["awards"].append({
+            "title": "Most Popular / \u4E07\u4EBA\u8FF7",
+            "emoji": "\U0001F929",
+            "winners": [agent_names.get(popular_id, "Unknown")],
+            "winner_emojis": [agent_emojis.get(popular_id, "\U0001F99E")],
+            "score": round(popular_avg, 1),
+        })
+
+    # 3. Most Generous / 最大方 — highest average scores given
+    if agent_scores_given:
+        generous_id = max(
+            agent_scores_given,
+            key=lambda aid: sum(agent_scores_given[aid]) / len(agent_scores_given[aid]),
+        )
+        generous_avg = sum(agent_scores_given[generous_id]) / len(agent_scores_given[generous_id])
+        results["awards"].append({
+            "title": "Most Generous / \u6700\u5927\u65B9",
+            "emoji": "\U0001F49D",
+            "winners": [agent_names.get(generous_id, "Unknown")],
+            "winner_emojis": [agent_emojis.get(generous_id, "\U0001F99E")],
+            "score": round(generous_avg, 1),
+        })
+
+    # 4. Heartbreaker / 心碎者 — gave low scores but received high
+    if agent_scores_given and agent_scores_received:
+        heartbreaker_id = None
+        max_delta = 0
+        for aid in agent_scores_given:
+            if aid not in agent_scores_received:
+                continue
+            avg_given = sum(agent_scores_given[aid]) / len(agent_scores_given[aid])
+            avg_received = sum(agent_scores_received[aid]) / len(agent_scores_received[aid])
+            delta = avg_received - avg_given
+            if delta > max_delta:
+                max_delta = delta
+                heartbreaker_id = aid
+        if heartbreaker_id and max_delta > 1:
+            results["awards"].append({
+                "title": "Heartbreaker / \u5FC3\u788E\u8005",
+                "emoji": "\U0001F494",
+                "winners": [agent_names.get(heartbreaker_id, "Unknown")],
+                "winner_emojis": [agent_emojis.get(heartbreaker_id, "\U0001F99E")],
+                "score": round(max_delta, 1),
+            })
+
+    # 5. Best Chemistry / 最佳化学反应 — mutual match with highest combined score
+    if event.mutual_matches:
+        best_mutual = max(event.mutual_matches, key=lambda m: m.combined_score)
+        results["awards"].append({
+            "title": "Best Chemistry / \u6700\u4F73\u5316\u5B66\u53CD\u5E94",
+            "emoji": "\u2728",
+            "winners": [best_mutual.agent_a.name, best_mutual.agent_b.name],
+            "winner_emojis": [best_mutual.agent_a.avatar_emoji, best_mutual.agent_b.avatar_emoji],
+            "score": best_mutual.combined_score,
+        })
+
+    # 6. Chattiest Date / 最能聊 — date with most message content
+    if event.dates:
+        chattiest = max(event.dates, key=lambda d: sum(len(m.content) for m in d.messages))
+        total_chars = sum(len(m.content) for m in chattiest.messages)
+        results["awards"].append({
+            "title": "Chattiest Date / \u6700\u80FD\u804A",
+            "emoji": "\U0001F4AC",
+            "winners": [chattiest.pairing.agent_a.name, chattiest.pairing.agent_b.name],
+            "winner_emojis": [chattiest.pairing.agent_a.avatar_emoji, chattiest.pairing.agent_b.avatar_emoji],
+            "score": total_chars,
         })
 
     return results
@@ -392,7 +635,7 @@ if os.path.exists(frontend_dist):
 def main():
     import uvicorn
     print("=" * 55)
-    print("  🦞 龙虾相亲大会 — Claw Dating Convention 🦞")
+    print("  \U0001F99E \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A \u2014 Claw Dating Convention \U0001F99E")
     print("  Open A2A Dating Platform")
     print(f"  http://localhost:{PLATFORM_PORT}")
     print("=" * 55)

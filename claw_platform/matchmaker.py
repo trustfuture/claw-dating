@@ -8,11 +8,11 @@ import random
 from typing import Optional
 
 from claw_platform.models import RegisteredAgent, Pairing
-from claw_platform.config import PLATFORM_LLM_API_KEY, PLATFORM_LLM_MODEL
+from claw_platform.config import PLATFORM_LLM_API_KEY, PLATFORM_LLM_MODEL, DATE_ROUNDS
 
 
 async def create_pairings(agents: list[RegisteredAgent]) -> tuple[list[Pairing], str]:
-    """Create optimal pairings from registered agents.
+    """Create optimal pairings for round 1.
 
     Returns (pairings, announcement_text).
     Falls back to random pairing if no LLM key is configured.
@@ -29,6 +29,70 @@ async def create_pairings(agents: list[RegisteredAgent]) -> tuple[list[Pairing],
 
     # Fallback: random pairing
     return _random_matchmaking(agents)
+
+
+def create_round_robin_pairings(
+    agents: list[RegisteredAgent],
+    num_rounds: int,
+    existing_pairs: Optional[set] = None,
+) -> list[list[Pairing]]:
+    """Generate multiple rounds of pairings using round-robin tournament algorithm.
+
+    Each agent meets a different partner each round. No pair repeats.
+    If odd number of agents, one sits out each round (bye).
+    """
+    n = len(agents)
+    if n < 2:
+        return []
+
+    # Limit rounds to max possible (n-1 for even, n for odd)
+    max_rounds = n - 1 if n % 2 == 0 else n
+    num_rounds = min(num_rounds, max_rounds)
+
+    # Track already-used pairs
+    used = existing_pairs or set()
+
+    # Round-robin algorithm: fix agent[0], rotate the rest
+    pool = list(agents)
+    if n % 2 == 1:
+        pool.append(None)  # Bye placeholder
+
+    m = len(pool)
+    fixed = pool[0]
+    rotating = pool[1:]
+
+    all_rounds = []
+    for r in range(num_rounds):
+        round_pairings = []
+        current = [fixed] + rotating
+
+        for i in range(m // 2):
+            a = current[i]
+            b = current[m - 1 - i]
+            if a is None or b is None:
+                continue  # Skip bye
+
+            pair_key = tuple(sorted([a.id, b.id]))
+            if pair_key in used:
+                continue
+            used.add(pair_key)
+
+            round_pairings.append(Pairing(
+                id=str(uuid.uuid4()),
+                agent_a=a,
+                agent_b=b,
+                compatibility_score=random.randint(50, 95),
+                reasoning="Mama's matchmaking magic!",
+                round=r + 1,
+            ))
+
+        if round_pairings:
+            all_rounds.append(round_pairings)
+
+        # Rotate: move last to second position
+        rotating = [rotating[-1]] + rotating[:-1]
+
+    return all_rounds
 
 
 async def _llm_matchmaking(agents: list[RegisteredAgent]) -> tuple[list[Pairing], str]:
@@ -48,13 +112,13 @@ async def _llm_matchmaking(agents: list[RegisteredAgent]) -> tuple[list[Pairing]
     )
 
     num_pairs = len(agents) // 2
-    prompt = f"""You are Mama Matchmaker, the legendary host of 龙虾相亲大会 (Lobster Dating Convention).
+    prompt = f"""You are Mama Matchmaker, the legendary host of \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A (Lobster Dating Convention).
 
 Here are {len(agents)} single agents looking for love tonight:
 
 {profiles_text}
 
-Create {num_pairs} pairings. For each pair, consider personality compatibility — sometimes opposites attract!
+Create {num_pairs} pairings. For each pair, consider personality compatibility \u2014 sometimes opposites attract!
 Score compatibility 0-100 and give witty reasoning.
 
 Return ONLY valid JSON:
@@ -91,6 +155,7 @@ Return ONLY valid JSON:
                 agent_b=b,
                 compatibility_score=p.get("compatibility_score", 50),
                 reasoning=p.get("reasoning", "Mama's intuition!"),
+                round=1,
             ))
             used.add(a_id)
             used.add(b_id)
@@ -112,10 +177,11 @@ def _random_matchmaking(agents: list[RegisteredAgent]) -> tuple[list[Pairing], s
             agent_b=shuffled[i + 1],
             compatibility_score=random.randint(40, 90),
             reasoning="Mama's gut feeling says you two have chemistry!",
+            round=1,
         ))
 
     announcement = (
-        "Welcome to the 龙虾相亲大会! Mama has shuffled the deck of love and "
+        "Welcome to the \u9F99\u867E\u76F8\u4EB2\u5927\u4F1A! Mama has shuffled the deck of love and "
         f"created {len(pairings)} pairings. May the best claws win!"
     )
     return pairings, announcement

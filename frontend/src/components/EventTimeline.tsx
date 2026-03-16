@@ -1,8 +1,16 @@
+import { useEffect, useRef } from 'react'
+
 interface Props {
   events: { text: string; time: string }[]
 }
 
 export function EventTimeline({ events }: Props) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [events.length])
+
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>Event Log</h3>
@@ -13,15 +21,22 @@ export function EventTimeline({ events }: Props) {
         {events.map((e, i) => (
           <div key={i} style={{
             ...styles.item,
-            animationDelay: `${i * 30}ms`,
+            animation: i === events.length - 1 ? 'slideIn 0.3s ease' : 'none',
           }}>
-            <span style={styles.dot} />
-            <div>
+            <div style={styles.dotCol}>
+              <span style={{
+                ...styles.dot,
+                background: i === events.length - 1 ? '#ec4899' : '#334155',
+              }} />
+              {i < events.length - 1 && <div style={styles.line} />}
+            </div>
+            <div style={styles.content}>
               <div style={styles.text}>{e.text}</div>
               <div style={styles.time}>{e.time}</div>
             </div>
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
     </div>
   )
@@ -29,54 +44,69 @@ export function EventTimeline({ events }: Props) {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    background: 'rgba(255,255,255,0.05)',
+    background: 'rgba(255,255,255,0.02)',
     borderRadius: 16,
     padding: 16,
-    border: '1px solid rgba(255,255,255,0.1)',
-    maxHeight: '60vh',
+    border: '1px solid rgba(255,255,255,0.06)',
+    maxHeight: 'calc(100vh - 160px)',
     overflowY: 'auto',
+    position: 'sticky',
+    top: 80,
   },
   title: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 700,
-    color: '#94a3b8',
-    marginBottom: 12,
+    color: '#475569',
+    marginBottom: 14,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   list: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
   },
   item: {
     display: 'flex',
-    alignItems: 'flex-start',
     gap: 10,
-    animation: 'fadeInUp 0.3s ease both',
+    minHeight: 36,
+  },
+  dotCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: 12,
+    flexShrink: 0,
   },
   dot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: '50%',
-    background: '#6366f1',
     marginTop: 5,
     flexShrink: 0,
   },
+  line: {
+    width: 1,
+    flex: 1,
+    background: 'rgba(255,255,255,0.04)',
+    marginTop: 4,
+  },
+  content: {
+    paddingBottom: 8,
+  },
   text: {
-    fontSize: 13,
-    color: '#e2e8f0',
-    lineHeight: 1.3,
+    fontSize: 12,
+    color: '#cbd5e1',
+    lineHeight: 1.4,
   },
   time: {
-    fontSize: 11,
-    color: '#64748b',
+    fontSize: 10,
+    color: '#334155',
     marginTop: 2,
   },
   empty: {
-    fontSize: 13,
-    color: '#64748b',
+    fontSize: 12,
+    color: '#334155',
     textAlign: 'center',
-    padding: 20,
+    padding: 24,
   },
 }
