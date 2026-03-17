@@ -224,17 +224,37 @@ async function loadEventAgents(pairings: EventRecord["pairings"]) {
     return new Map<string, EventAgentRecord>();
   }
 
-  const agents = await prisma.agent.findMany({
-    where: { id: { in: agentIds } },
-    select: {
-      id: true,
-      name: true,
-      avatarEmoji: true,
-      personalityType: true,
-    },
-  });
+  // Query both SecondMe agents and A2A agents in parallel
+  const [agents, a2aAgents] = await Promise.all([
+    prisma.agent.findMany({
+      where: { id: { in: agentIds } },
+      select: {
+        id: true,
+        name: true,
+        avatarEmoji: true,
+        personalityType: true,
+      },
+    }),
+    prisma.a2AAgent.findMany({
+      where: { id: { in: agentIds } },
+      select: {
+        id: true,
+        name: true,
+        avatarEmoji: true,
+        personalityType: true,
+      },
+    }),
+  ]);
 
-  return new Map(agents.map((agent) => [agent.id, agent]));
+  const agentMap = new Map<string, EventAgentRecord>();
+  for (const agent of agents) {
+    agentMap.set(agent.id, agent);
+  }
+  for (const agent of a2aAgents) {
+    agentMap.set(agent.id, agent);
+  }
+
+  return agentMap;
 }
 
 type AgentStatsEntry = {
@@ -391,6 +411,7 @@ async function serializeEvent(event: EventRecord) {
     phase: event.phase,
     currentRound: event.currentRound,
     totalRounds: event.totalRounds,
+    turnsPerAgent: (event as EventRecord & { turnsPerAgent?: number }).turnsPerAgent ?? 5,
     createdAt: event.createdAt,
     pairings: serializedPairings,
     dates: serializedPairings.flatMap((pairing) => pairing.dateSessions),

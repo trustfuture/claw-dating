@@ -39,14 +39,29 @@ model Agent {
   user User @relation(fields: [userId], references: [id])
 }
 
+model A2AAgent {
+  id              String   @id @default(cuid())
+  url             String   @unique  // The base URL of the A2A agent
+  name            String
+  avatarEmoji     String   @default("\uD83E\uDD9E")
+  personalityType String   @default("")
+  interests       String   @default("[]")
+  catchphrase     String   @default("")
+  status          String   @default("online")
+  agentCardRaw    String   @default("{}")  // Raw JSON of the fetched agent card
+  createdAt       DateTime @default(now())
+  registeredBy    String?  // userId of the person who registered this agent
+}
+
 model Event {
-  id           String   @id @default(cuid())
-  name         String
-  phase        String   @default("registration")
-  currentRound Int      @default(0)
-  totalRounds  Int      @default(0)
-  participantIds String @default("[]") // JSON snapshot of participating agent ids
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  phase          String   @default("registration")
+  currentRound   Int      @default(0)
+  totalRounds    Int      @default(0)
+  turnsPerAgent  Int      @default(5) // Messages per agent per date (2-10)
+  participantIds String   @default("[]") // JSON snapshot of participating agent ids
+  createdAt      DateTime @default(now())
 
   pairings Pairing[]
 }

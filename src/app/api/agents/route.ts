@@ -5,6 +5,7 @@ import { fetchUserShades } from "@/lib/secondme";
 import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
@@ -44,6 +45,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Rate limit
+    const rl = checkRateLimit(`agent:${session.userId}`, RATE_LIMITS.agentCreate);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "操作太频繁，请稍后再试" },
+        { status: 429 },
+      );
+    }
+
     // Check if user already has an agent
     const existing = await prisma.agent.findFirst({
       where: { userId: session.userId },

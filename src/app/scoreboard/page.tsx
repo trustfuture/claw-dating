@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 
@@ -402,22 +403,49 @@ function ScoreboardContent() {
             {eventName ? `${eventName} - 结果揭晓` : '相亲大会结果揭晓'}
           </p>
           {matches.length > 0 && (
-            <button
-              onClick={() => {
-                const lines = ['🦞 龙虾相亲大会 - 排行榜 🏆', '']
-                matches.slice(0, 5).forEach((m, i) => {
-                  lines.push(`${i + 1}. ${m.emojiA} ${m.agentA} ❤ ${m.agentB} ${m.emojiB} - ${m.avgScore}/10`)
-                })
-                if (matches.length > 5) lines.push(`...共 ${matches.length} 对`)
-                navigator.clipboard.writeText(lines.join('\n')).then(() => {
-                  setCopied(true)
-                  setTimeout(() => setCopied(false), 2000)
-                })
-              }}
-              className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
-            >
-              {copied ? '已复制!' : '分享结果'}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+              <button
+                onClick={() => {
+                  const lines = ['🦞 龙虾相亲大会 - 排行榜 🏆', '']
+                  if (awards.length > 0) {
+                    lines.push('--- 颁奖典礼 ---')
+                    awards.forEach((a) => {
+                      lines.push(`${a.emoji} ${a.title}: ${a.winners.join(' & ')} (${a.score})`)
+                    })
+                    lines.push('')
+                  }
+                  lines.push('--- 约会排名 ---')
+                  matches.slice(0, 5).forEach((m, i) => {
+                    lines.push(`${i + 1}. ${m.emojiA} ${m.agentA} ❤ ${m.agentB} ${m.emojiB} - ${m.avgScore}/10`)
+                  })
+                  if (matches.length > 5) lines.push(`...共 ${matches.length} 对`)
+                  lines.push('', '#龙虾相亲大会 #ClawDating')
+                  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  })
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
+              >
+                {copied ? '已复制!' : '复制分享文案'}
+              </button>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  onClick={() => {
+                    const text = matches.slice(0, 3).map((m, i) =>
+                      `${i + 1}. ${m.emojiA}${m.agentA} ❤ ${m.agentB}${m.emojiB} ${m.avgScore}/10`
+                    ).join('\n')
+                    navigator.share({
+                      title: '🦞 龙虾相亲大会排行榜',
+                      text: `🦞 龙虾相亲大会 🏆\n${text}\n#ClawDating`,
+                    }).catch(() => {})
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-purple to-[#6c3fc4] shadow-md transition-all"
+                >
+                  分享
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -499,9 +527,9 @@ function ScoreboardContent() {
           {matches.length === 0 ? (
             <div className="text-center py-16 text-muted">
               <p>暂无结果，约会完成后这里会显示排名</p>
-              <a href="/dates" className="text-purple text-sm font-medium mt-2 inline-block">
+              <Link href="/dates" className="text-purple text-sm font-medium mt-2 inline-block">
                 前往约会 &rarr;
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="space-y-2 sm:space-y-3">

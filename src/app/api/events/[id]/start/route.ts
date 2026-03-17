@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getEventViewById } from "@/lib/api-view";
 import {
-  createPairings,
+  createPairingsWithLLM,
   createRoundRobinPairings,
   pairKey,
   type AgentForMatching,
@@ -67,6 +67,77 @@ export async function POST(
 }
 
 // ---------------------------------------------------------------------------
+// Collect all agents (SecondMe + A2A) for matching
+// ---------------------------------------------------------------------------
+
+async function collectAllAgentsForMatching(): Promise<AgentForMatching[]> {
+  // Fetch SecondMe agents
+  const agents = await prisma.agent.findMany({
+    where: { status: "online" },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const agentsForMatching: AgentForMatching[] = agents.map((a) => ({
+    id: a.id,
+    name: a.name,
+    interests: a.interests,
+    personalityType: a.personalityType,
+    catchphrase: a.catchphrase,
+  }));
+
+  // Fetch A2A agents
+  const a2aAgents = await prisma.a2AAgent.findMany({
+    where: { status: "online" },
+    orderBy: { createdAt: "asc" },
+  });
+
+  for (const a2a of a2aAgents) {
+    agentsForMatching.push({
+      id: a2a.id,
+      name: a2a.name,
+      interests: a2a.interests, // Already stored as JSON string
+      personalityType: a2a.personalityType,
+      catchphrase: a2a.catchphrase,
+    });
+  }
+
+  return agentsForMatching;
+}
+
+// ---------------------------------------------------------------------------
+// Load agents from both tables by IDs (for subsequent rounds)
+// ---------------------------------------------------------------------------
+
+async function loadAgentsByIds(ids: string[]): Promise<AgentForMatching[]> {
+  const agents = await prisma.agent.findMany({
+    where: { id: { in: ids } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const a2aAgents = await prisma.a2AAgent.findMany({
+    where: { id: { in: ids } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return [
+    ...agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      interests: a.interests,
+      personalityType: a.personalityType,
+      catchphrase: a.catchphrase,
+    })),
+    ...a2aAgents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      interests: a.interests,
+      personalityType: a.personalityType,
+      catchphrase: a.catchphrase,
+    })),
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Start first round from registration phase
 // ---------------------------------------------------------------------------
 
@@ -106,27 +177,17 @@ async function startFirstRound(
   eventId: string,
   session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
 ) {
-  const agents = await prisma.agent.findMany({
-    where: { status: "online" },
-    orderBy: { createdAt: "asc" },
-  });
+  const agentsForMatching = await collectAllAgentsForMatching();
 
-  if (agents.length < 2) {
+  if (agentsForMatching.length < 2) {
     return NextResponse.json(
       { error: "至少需要2个智能体才能开始约会" },
       { status: 400 },
     );
   }
 
-  const agentsForMatching: AgentForMatching[] = agents.map((a) => ({
-    id: a.id,
-    name: a.name,
-    interests: a.interests,
-    personalityType: a.personalityType,
-    catchphrase: a.catchphrase,
-  }));
-
-  const pairingResults = createPairings(agentsForMatching);
+  // Use LLM-enhanced matching when API key is available, otherwise fall back
+  const pairingResults = await createPairingsWithLLM(agentsForMatching);
 
   if (pairingResults.length === 0) {
     return NextResponse.json(
@@ -199,7 +260,7 @@ async function advanceRound(
 
   const allFinished = currentRoundSessions.length > 0 &&
     currentRoundSessions.every(
-      (ds) => ds.status === "completed" || ds.status === "error" || ds.status === "failed",
+      (ds) => ds.status === "completed" || ds.status === "error" || ds.status === "failed" || ds.status === "cancelled",
     );
 
   if (!allFinished) {
@@ -226,12 +287,10 @@ async function advanceRound(
   const nextRound = currentRound + 1;
   const participantIds = parseParticipantIds(event.participantIds, event.pairings);
 
-  const agents = await prisma.agent.findMany({
-    where: { id: { in: participantIds } },
-    orderBy: { createdAt: "asc" },
-  });
+  // Load agents from both tables using the participant IDs
+  const agentsForMatching = await loadAgentsByIds(participantIds);
 
-  if (agents.length < 2) {
+  if (agentsForMatching.length < 2) {
     return NextResponse.json(
       { error: "本次活动的参赛智能体不足，无法开始下一轮" },
       { status: 400 },
@@ -243,14 +302,6 @@ async function advanceRound(
   for (const p of event.pairings) {
     usedPairs.add(pairKey(p.agentAId, p.agentBId));
   }
-
-  const agentsForMatching: AgentForMatching[] = agents.map((a) => ({
-    id: a.id,
-    name: a.name,
-    interests: a.interests,
-    personalityType: a.personalityType,
-    catchphrase: a.catchphrase,
-  }));
 
   const roundResults = createRoundRobinPairings(
     agentsForMatching,

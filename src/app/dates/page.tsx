@@ -23,6 +23,7 @@ interface DateData {
     senderName: string
     content: string
     turn: number
+    createdAt?: string
   }[]
   ratings: {
     agentId: string
@@ -194,6 +195,25 @@ export default function DatesPage() {
     setRunningDateIds((prev) => prev.filter((id) => id !== dateId))
   }, [])
 
+  const cancelDate = useCallback(async (dateId: string) => {
+    try {
+      const res = await fetch(`/api/dates/${dateId}/cancel`, { method: 'POST' })
+      if (!res.ok) {
+        const errMsg = await readJsonError(res)
+        addToast('error', errMsg)
+        return
+      }
+      patchDate(dateId, (date) => ({
+        ...date,
+        status: 'cancelled',
+      }))
+      addToast('success', '约会已取消')
+      fetchEvent()
+    } catch {
+      addToast('error', '网络错误，请重试')
+    }
+  }, [addToast, fetchEvent, patchDate])
+
   const runDate = useCallback(async (dateId: string) => {
     try {
       const res = await fetch(`/api/dates/${dateId}/run`, { method: 'POST' })
@@ -239,6 +259,7 @@ export default function DatesPage() {
                   senderName: event.data.senderName,
                   content: event.data.content,
                   turn: event.data.turn,
+                  createdAt: new Date().toISOString(),
                 },
               ].sort((a, b) => a.turn - b.turn),
             }
@@ -320,7 +341,7 @@ export default function DatesPage() {
   // Check if current round dates are all done
   const currentRoundDates = datesByRound[currentRound] || []
   const currentRoundAllDone = currentRoundDates.length > 0 && currentRoundDates.every(
-    (d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed'
+    (d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed' || d.status === 'cancelled'
   )
   const hasMoreRounds = currentRound < totalRounds
   const allRoundsDone = currentRoundAllDone && !hasMoreRounds
@@ -393,7 +414,7 @@ export default function DatesPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display text-2xl sm:text-3xl font-bold">约会进行中</h1>
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot}`} title={fetchStatus === 'connected' ? '已连接' : fetchStatus === 'error' ? '连接失败' : '连接中'} />
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot}`} aria-label={fetchStatus === 'connected' ? '已连接' : fetchStatus === 'error' ? '连接失败' : '连接中'} title={fetchStatus === 'connected' ? '已连接' : fetchStatus === 'error' ? '连接失败' : '连接中'} />
             </div>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-secondary text-sm">
@@ -485,7 +506,7 @@ export default function DatesPage() {
                 {/* Round header */}
                 {roundNumbers.length > 1 && (() => {
                   const roundDates = datesByRound[roundNum] || []
-                  const doneCount = roundDates.filter((d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed').length
+                  const doneCount = roundDates.filter((d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed' || d.status === 'cancelled').length
                   const pct = roundDates.length > 0 ? (doneCount / roundDates.length) * 100 : 0
                   return (
                     <div className="mb-3 sm:mb-4">
@@ -514,6 +535,7 @@ export default function DatesPage() {
                       key={date.id}
                       date={date}
                       onRun={() => runDate(date.id)}
+                      onCancel={() => cancelDate(date.id)}
                       running={runningDateIds.includes(date.id)}
                     />
                   ))}

@@ -54,7 +54,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ addToast }}>
       {children}
       {/* Toast container */}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <div
+        role="alert"
+        aria-live="assertive"
+        className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"
+      >
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}
@@ -108,6 +112,7 @@ function ToastItem({
       <p className="text-sm font-medium flex-1">{toast.message}</p>
       <button
         onClick={onDismiss}
+        aria-label="关闭通知"
         className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity text-xs"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">

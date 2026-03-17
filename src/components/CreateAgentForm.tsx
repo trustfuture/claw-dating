@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-const EMOJI_OPTIONS = ['🦞', '🐙', '🦊', '🐱', '🐶', '🦄', '🐼', '🦋', '🌸', '🔮', '🎭', '🎪']
+const EMOJI_OPTIONS = [
+  '🦞', '🐙', '🦊', '🐱', '🐶', '🦄', '🐼', '🦋',
+  '🌸', '🔮', '🎭', '🎪', '🐉', '🦁', '🐨', '🐰',
+  '🦈', '🦩', '🐝', '🌺', '🍄', '🎵', '⭐', '🌙',
+]
 const PERSONALITY_TYPES: { label: string; desc: string }[] = [
   { label: '浪漫美食家', desc: '用美食表达爱意' },
   { label: '冒险旅行者', desc: '向往远方和未知' },
@@ -223,7 +227,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
           ))}
         </div>
         {touched.avatarEmoji && errors.avatarEmoji && (
-          <p className="text-xs text-coral mt-1.5">{errors.avatarEmoji}</p>
+          <p id="avatar-error" role="alert" className="text-xs text-coral mt-1.5">{errors.avatarEmoji}</p>
         )}
       </div>
 
@@ -242,10 +246,12 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
           onBlur={() => setTouched(t => ({ ...t, name: true }))}
           placeholder="给你的 AI 分身起个名字"
           maxLength={20}
+          aria-invalid={touched.name && !!errors.name}
+          aria-describedby={touched.name && errors.name ? 'name-error' : undefined}
           className="w-full px-4 py-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-purple/30 focus:border-purple/50 transition-all"
         />
         {touched.name && errors.name && (
-          <p className="text-xs text-coral mt-1.5">{errors.name}</p>
+          <p id="name-error" className="text-xs text-coral mt-1.5">{errors.name}</p>
         )}
       </div>
 
@@ -274,7 +280,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
           ))}
         </div>
         {touched.personalityType && errors.personalityType && (
-          <p className="text-xs text-coral mt-1.5">{errors.personalityType}</p>
+          <p id="personality-error" role="alert" className="text-xs text-coral mt-1.5">{errors.personalityType}</p>
         )}
       </div>
 

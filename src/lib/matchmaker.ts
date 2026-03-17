@@ -2,6 +2,8 @@
 // Types
 // ---------------------------------------------------------------------------
 
+import { isLLMConfigured, chatCompletion } from "@/lib/llm";
+
 export interface AgentForMatching {
   id: string;
   name: string;
@@ -313,6 +315,96 @@ function greedyMatch(
 }
 
 // ---------------------------------------------------------------------------
+// LLM-enhanced reasoning
+// ---------------------------------------------------------------------------
+
+/**
+ * Build agent profile summary for the LLM prompt.
+ */
+function agentProfileSummary(agent: AgentForMatching): string {
+  const interests = parseInterests(agent.interests);
+  const parts: string[] = [];
+  parts.push(`名字: ${agent.name}`);
+  if (agent.personalityType) parts.push(`性格类型: ${agent.personalityType}`);
+  if (interests.length > 0) parts.push(`兴趣爱好: ${interests.join("、")}`);
+  if (agent.catchphrase) parts.push(`口头禅: "${agent.catchphrase}"`);
+  return parts.join("\n");
+}
+
+/**
+ * Use LLM to generate creative Chinese matchmaking reasoning for a pairing.
+ * Returns null if the call fails so the caller can fall back.
+ */
+async function generateLLMReasoning(
+  agentA: AgentForMatching,
+  agentB: AgentForMatching,
+  algorithmicScore: number,
+): Promise<string | null> {
+  try {
+    const prompt = `你是龙虾相亲大会的红娘主持人。请根据以下两位嘉宾的资料，用生动有趣的中文写出2-3句配对理由，解释为什么他们适合约会。语气要俏皮可爱，像综艺节目主持人一样。不要输出任何前缀或标签，直接输出配对理由。
+
+嘉宾A:
+${agentProfileSummary(agentA)}
+
+嘉宾B:
+${agentProfileSummary(agentB)}
+
+算法匹配分数: ${algorithmicScore}/100`;
+
+    const result = await chatCompletion(
+      [
+        { role: "system", content: "你是一位幽默风趣的相亲红娘，擅长用生动的语言描述两个人为什么般配。回答要简洁（2-3句话），全部用中文。" },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.9, maxTokens: 200 },
+    );
+
+    // Basic sanity check: make sure we got something reasonable
+    if (result && result.length > 5 && result.length < 500) {
+      return result;
+    }
+    return null;
+  } catch (err) {
+    console.warn("LLM reasoning generation failed, falling back to algorithmic:", err);
+    return null;
+  }
+}
+
+/**
+ * Enhance an array of pairing results by replacing the algorithmic reasoning
+ * with LLM-generated reasoning. All LLM calls run in parallel for speed.
+ * Any individual failure falls back to the original algorithmic reasoning.
+ */
+async function enhancePairingsWithLLM(
+  pairings: PairingResult[],
+  agents: AgentForMatching[],
+): Promise<PairingResult[]> {
+  const agentMap = new Map(agents.map((a) => [a.id, a]));
+
+  const enhanced = await Promise.all(
+    pairings.map(async (pairing) => {
+      const agentA = agentMap.get(pairing.agentAId);
+      const agentB = agentMap.get(pairing.agentBId);
+
+      if (!agentA || !agentB) return pairing;
+
+      const llmReasoning = await generateLLMReasoning(
+        agentA,
+        agentB,
+        pairing.compatibilityScore,
+      );
+
+      return {
+        ...pairing,
+        reasoning: llmReasoning ?? pairing.reasoning,
+      };
+    }),
+  );
+
+  return enhanced;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -326,6 +418,32 @@ export function createPairings(
   usedPairs?: Set<string>,
 ): PairingResult[] {
   return greedyMatch(agents, usedPairs);
+}
+
+/**
+ * Create pairings with LLM-enhanced reasoning. First runs the algorithmic
+ * pairing, then uses the OpenAI API to generate richer, more creative
+ * Chinese reasoning for each pair. Falls back gracefully to algorithmic
+ * reasoning if the LLM is not configured or any call fails.
+ */
+export async function createPairingsWithLLM(
+  agents: AgentForMatching[],
+  usedPairs?: Set<string>,
+): Promise<PairingResult[]> {
+  const pairings = greedyMatch(agents, usedPairs);
+
+  if (pairings.length === 0) return pairings;
+
+  if (!isLLMConfigured()) {
+    return pairings;
+  }
+
+  try {
+    return await enhancePairingsWithLLM(pairings, agents);
+  } catch (err) {
+    console.warn("LLM enhancement failed entirely, using algorithmic pairings:", err);
+    return pairings;
+  }
 }
 
 /**

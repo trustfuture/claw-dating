@@ -29,6 +29,7 @@ interface DateRoomProps {
     failedAtTurn?: number
   }
   onRun: () => void
+  onCancel?: () => void
   running: boolean
 }
 
@@ -42,28 +43,41 @@ function relativeTime(dateStr?: string): string {
   return `${Math.floor(diff / 86400)}天前`
 }
 
-export function DateRoom({ date, onRun, running }: DateRoomProps) {
+export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
   const { pairing, messages, ratings, status } = date
   const { agentA, agentB } = pairing
   const isError = status === 'error' || status === 'failed'
+  const isCancelled = status === 'cancelled'
   const isActive = status === 'in_progress'
+  const isCompleted = status === 'completed'
+  const canCancel = (status === 'in_progress' || status === 'pending') && onCancel
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
+  const headerContent = (
+    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+      <span className="text-xl sm:text-2xl">{agentA.avatarEmoji}</span>
+      <span className="text-xs sm:text-sm font-semibold">{agentA.name}</span>
+      <span className="text-coral text-base sm:text-lg mx-0.5 sm:mx-1">&hearts;</span>
+      <span className="text-xs sm:text-sm font-semibold">{agentB.name}</span>
+      <span className="text-xl sm:text-2xl">{agentB.avatarEmoji}</span>
+    </div>
+  )
+
   return (
     <div className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
       {/* Header */}
       <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <span className="text-xl sm:text-2xl">{agentA.avatarEmoji}</span>
-          <span className="text-xs sm:text-sm font-semibold">{agentA.name}</span>
-          <span className="text-coral text-base sm:text-lg mx-0.5 sm:mx-1">&hearts;</span>
-          <span className="text-xs sm:text-sm font-semibold">{agentB.name}</span>
-          <span className="text-xl sm:text-2xl">{agentB.avatarEmoji}</span>
-        </div>
+        {isCompleted ? (
+          <a href={`/dates/${date.id}`} className="hover:opacity-70 transition-opacity">
+            {headerContent}
+          </a>
+        ) : (
+          headerContent
+        )}
         <div className="flex items-center gap-2 sm:gap-3">
           {pairing.compatibilityScore > 0 && (
             <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gold/10 text-gold font-medium">
@@ -72,11 +86,27 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
           )}
           {isActive && messages.length > 0 && (
             <span className="text-[10px] sm:text-xs text-muted font-medium tabular-nums">
-              {messages.length}/10 消息
+              {messages.length} 消息
             </span>
           )}
           {isActive && <ElapsedTimer startedAt={date.startedAt} />}
           <StatusBadge status={status} />
+          {isCompleted && (
+            <a
+              href={`/dates/${date.id}`}
+              className="text-[10px] sm:text-xs text-purple hover:underline font-medium"
+            >
+              查看详情
+            </a>
+          )}
+          {canCancel && (
+            <button
+              onClick={onCancel}
+              className="text-[10px] sm:text-xs px-2 py-0.5 rounded-lg border border-[var(--border)] text-muted hover:text-coral hover:border-coral/30 transition-colors"
+            >
+              取消约会
+            </button>
+          )}
         </div>
       </div>
 
@@ -124,11 +154,15 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
         </div>
       ) : isActive && running ? (
         /* Loading skeleton */
-        <div className="px-3 sm:px-6 py-3 sm:py-4 space-y-2.5 sm:space-y-3">
+        <div className="px-3 sm:px-6 py-3 sm:py-4 space-y-2.5 sm:space-y-3" aria-busy="true">
           <SkeletonMessage align="left" />
           <SkeletonMessage align="right" />
           <SkeletonMessage align="left" wide />
           <SkeletonMessage align="right" />
+        </div>
+      ) : isCancelled ? (
+        <div className="px-4 sm:px-6 py-8 sm:py-10 text-center">
+          <p className="text-muted text-sm">这场约会已被取消</p>
         </div>
       ) : status === 'pending' ? (
         <div className="px-4 sm:px-6 py-8 sm:py-10 text-center">
@@ -239,16 +273,18 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; cls: string }> = {
-    pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500' },
-    in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple' },
-    completed: { label: '已完成', cls: 'bg-teal/10 text-teal' },
-    error: { label: '失败', cls: 'bg-coral/10 text-coral' },
-    failed: { label: '失败', cls: 'bg-coral/10 text-coral' },
+  const config: Record<string, { label: string; cls: string; dotCls: string }> = {
+    pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+    in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple', dotCls: 'bg-purple' },
+    completed: { label: '已完成', cls: 'bg-teal/10 text-teal', dotCls: 'bg-teal' },
+    cancelled: { label: '已取消', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+    error: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
+    failed: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
   }
   const c = config[status] || config.pending
   return (
-    <span className={`text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium ${c.cls}`}>
+    <span role="status" className={`text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium inline-flex items-center gap-1 ${c.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dotCls}`} aria-label={c.label} />
       {c.label}
     </span>
   )

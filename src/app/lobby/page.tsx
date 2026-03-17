@@ -51,8 +51,9 @@ export default function LobbyPage() {
   const [activePersonalities, setActivePersonalities] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<SortMode>('newest')
 
-  // Round selector
+  // Round & turns selector
   const [totalRounds, setTotalRounds] = useState(2)
+  const [turnsPerAgent, setTurnsPerAgent] = useState(5)
 
   // Edit / Delete state
   const [editingAgent, setEditingAgent] = useState(false)
@@ -124,7 +125,7 @@ export default function LobbyPage() {
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `相亲大会 #${Date.now()}`, totalRounds }),
+        body: JSON.stringify({ name: `相亲大会 #${Date.now()}`, totalRounds, turnsPerAgent }),
       })
       if (res.ok) {
         fetchEvent()
@@ -239,7 +240,7 @@ export default function LobbyPage() {
         const res = await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: `相亲大会 #${Date.now()}`, totalRounds }),
+          body: JSON.stringify({ name: `相亲大会 #${Date.now()}`, totalRounds, turnsPerAgent }),
         })
         const data = await res.json()
         eventId = data.event?.id
@@ -374,24 +375,44 @@ export default function LobbyPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              {/* Round selector - only show when can start */}
+              {/* Round & turns selectors - only show when can start */}
               {agent && agents.length >= 2 && !hasStartedEvent && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-secondary whitespace-nowrap">轮数</span>
-                  <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
-                    {[1, 2, 3].map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => setTotalRounds(n)}
-                        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                          totalRounds === n
-                            ? 'bg-purple text-white'
-                            : 'bg-white text-secondary hover:bg-purple/5'
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    ))}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-secondary whitespace-nowrap">轮数</span>
+                    <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
+                      {[1, 2, 3].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setTotalRounds(n)}
+                          className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                            totalRounds === n
+                              ? 'bg-purple text-white'
+                              : 'bg-white text-secondary hover:bg-purple/5'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-secondary whitespace-nowrap">对话轮</span>
+                    <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
+                      {[3, 5, 8].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setTurnsPerAgent(n)}
+                          className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                            turnsPerAgent === n
+                              ? 'bg-purple text-white'
+                              : 'bg-white text-secondary hover:bg-purple/5'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -501,7 +522,7 @@ export default function LobbyPage() {
 
           {/* Content: Loading / Error / Empty / Grid */}
           {agentsLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" aria-busy="true" aria-label="加载中">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
@@ -669,7 +690,7 @@ export default function LobbyPage() {
               <div className="text-4xl mb-3">🦞</div>
               <h3 id="confirm-title" className="font-display text-lg font-bold mb-2">确定要开始吗？</h3>
               <p className="text-secondary text-sm mb-6">
-                开始后不能再注册新 Agent。本次活动将进行 {totalRounds} 轮约会。
+                开始后不能再注册新 Agent。本次活动将进行 {totalRounds} 轮约会，每场约会 {turnsPerAgent * 2} 条消息。
               </p>
               <div className="flex gap-3">
                 <button

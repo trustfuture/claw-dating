@@ -31,13 +31,14 @@ export interface DateResult {
 export interface RunDateOptions {
   onMessage?: (message: DateMessage) => void | Promise<void>;
   onRatings?: (ratings: AgentRating[]) => void | Promise<void>;
+  turnsPerAgent?: number; // defaults to 5
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const TURNS_PER_AGENT = 5; // 5 turns each = 10 messages total
+const DEFAULT_TURNS_PER_AGENT = 5; // 5 turns each = 10 messages total
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -171,11 +172,12 @@ export async function runDate(
     });
     await options.onMessage?.(firstMsg);
 
-    // --- Turns 2..10: alternating conversation --------------------------------
+    // --- Turns 2..N: alternating conversation --------------------------------
+    const turnsPerAgent = Math.min(Math.max(options.turnsPerAgent ?? DEFAULT_TURNS_PER_AGENT, 2), 10);
     let lastMessage = introResult.text;
     let lastSenderName = agentA.name;
 
-    for (let turn = 2; turn <= TURNS_PER_AGENT * 2; turn++) {
+    for (let turn = 2; turn <= turnsPerAgent * 2; turn++) {
       const isAgentATurn = turn % 2 === 1; // odd turns = A, even turns = B
       const currentToken = isAgentATurn ? tokenA : tokenB;
       const currentAgent = isAgentATurn ? agentA : agentB;

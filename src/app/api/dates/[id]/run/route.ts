@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { runDate } from "@/lib/date-engine";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(
   _request: NextRequest,
@@ -18,10 +19,19 @@ export async function POST(
     );
   }
 
-  // Verify date session exists
+  // Rate limit
+  const rl = checkRateLimit(`date:${session.userId}`, RATE_LIMITS.dateRun);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "操作太频繁，请稍后再试" },
+      { status: 429 },
+    );
+  }
+
+  // Verify date session exists and load event config
   const dateSession = await prisma.dateSession.findUnique({
     where: { id: dateSessionId },
-    include: { pairing: true },
+    include: { pairing: { include: { event: true } } },
   });
 
   if (!dateSession) {
@@ -57,7 +67,10 @@ export async function POST(
       try {
         send("status", { message: "约会即将开始..." });
 
+        const turnsPerAgent = dateSession.pairing.event.turnsPerAgent || 5;
+
         const result = await runDate(dateSessionId, {
+          turnsPerAgent,
           onMessage(message) {
             send("message", message);
           },

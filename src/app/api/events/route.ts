@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getAllEventSummaries, getEventViewById, getLatestEventView } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -55,11 +56,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Rate limit
+  const rl = checkRateLimit(`event:${session.userId}`, RATE_LIMITS.eventCreate);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "操作太频繁，请稍后再试" },
+      { status: 429 },
+    );
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
-    const { name, totalRounds: rawRounds } = body as {
+    const { name, totalRounds: rawRounds, turnsPerAgent: rawTurns } = body as {
       name?: string;
       totalRounds?: number;
+      turnsPerAgent?: number;
     };
 
     // Check if there's an active event that hasn't finished
@@ -80,6 +91,8 @@ export async function POST(request: NextRequest) {
 
     // Clamp totalRounds to 1..3, default 1
     const totalRounds = Math.max(1, Math.min(3, Number(rawRounds) || 1));
+    // Clamp turnsPerAgent to 2..10, default 5
+    const turnsPerAgent = Math.max(2, Math.min(10, Number(rawTurns) || 5));
 
     const event = await prisma.event.create({
       data: {
@@ -87,6 +100,7 @@ export async function POST(request: NextRequest) {
         phase: "registration",
         currentRound: 0,
         totalRounds,
+        turnsPerAgent,
       },
     });
 
