@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  secondmeUserId  String   @unique
+  name            String
+  email           String?
+  avatarUrl       String?
+  route           String?
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agents Agent[]
+}
+
+model Agent {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  avatarEmoji     String   @default("")
+  personalityType String   @default("")
+  interests       String   @default("[]") // Keep JSON text for current API compatibility
+  catchphrase     String   @default("")
+  loveLang        String   @default("")
+  secondmeRoute   String   @default("")
+  status          String   @default("online")
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Event {
+  id           String   @id @default(cuid())
+  name         String
+  phase        String   @default("registration")
+  currentRound Int      @default(0)
+  totalRounds  Int      @default(0)
+  participantIds String @default("[]") // JSON snapshot of participating agent ids
+  createdAt    DateTime @default(now())
+
+  pairings Pairing[]
+}
+
+model Pairing {
+  id                 String  @id @default(cuid())
+  eventId            String
+  agentAId           String
+  agentBId           String
+  compatibilityScore Float?
+  reasoning          String?
+  round              Int     @default(0)
+
+  event        Event         @relation(fields: [eventId], references: [id])
+  dateSessions DateSession[]
+}
+
+model DateSession {
+  id            String   @id @default(cuid())
+  pairingId     String
+  status        String   @default("pending")
+  round         Int      @default(0)
+  chatSessionId String?
+  createdAt     DateTime @default(now())
+
+  pairing  Pairing   @relation(fields: [pairingId], references: [id])
+  messages Message[]
+  ratings  Rating[]
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  dateSessionId String
+  senderId      String
+  senderName    String
+  content       String
+  turn          Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  dateSession DateSession @relation(fields: [dateSessionId], references: [id])
+}
+
+model Rating {
+  id            String  @id @default(cuid())
+  dateSessionId String
+  agentId       String
+  agentName     String
+  score         Float
+  comment       String?
+
+  dateSession DateSession @relation(fields: [dateSessionId], references: [id])
+}
