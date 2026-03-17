@@ -47,6 +47,10 @@ function parseRating(text: string): { score: number; comment: string } {
   const scoreMatch = text.match(/SCORE:\s*(\d+(?:\.\d+)?)/i);
   const commentMatch = text.match(/COMMENT:\s*([\s\S]*)/i);
 
+  if (!scoreMatch) {
+    console.warn("[date-engine] 评分解析失败，使用默认值 5:", text.slice(0, 100));
+  }
+
   const score = scoreMatch ? Math.min(10, Math.max(1, parseFloat(scoreMatch[1]))) : 5;
   const comment = commentMatch ? commentMatch[1].trim() : text.trim();
 
@@ -139,9 +143,8 @@ export async function runDate(
     const tokenB = agentB.user.accessToken;
 
     if (!tokenA || !tokenB) {
-      throw new Error(
-        `Missing SecondMe access token for one or both agents (A: ${agentA.id}, B: ${agentB.id})`,
-      );
+      const missing = !tokenA ? agentA.name : agentB.name;
+      throw new Error(`${missing} 的 SecondMe 未授权，请重新登录`);
     }
 
     // --- Turn 1: Agent A introduces themselves --------------------------------
@@ -283,8 +286,18 @@ export async function runDate(
       status: "completed",
     };
   } catch (err) {
-    const errorMessage =
-      err instanceof Error ? err.message : "Unknown error during date";
+    const rawMessage = err instanceof Error ? err.message : "Unknown error during date";
+    const turn = messages.length;
+    let errorMessage = rawMessage;
+    if (rawMessage.includes("超时")) {
+      errorMessage = turn > 0
+        ? `在第 ${turn} 轮对话时 SecondMe 响应超时`
+        : "SecondMe 响应超时，请稍后重试";
+    } else if (rawMessage.includes("fetch") || rawMessage.includes("network") || rawMessage.includes("ECONNREFUSED")) {
+      errorMessage = turn > 0
+        ? `在第 ${turn} 轮对话时网络中断`
+        : "网络连接失败，请检查网络后重试";
+    }
     errors.push(errorMessage);
 
     // Persist whatever we have so far

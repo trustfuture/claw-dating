@@ -220,16 +220,29 @@ export async function sendChatMessage(
     payload.sessionId = sessionId;
   }
 
-  const res = await fetch(`${BASE_URL}/api/secondme/chat/stream`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
 
-  return parseSSEStream(res);
+  try {
+    const res = await fetch(`${BASE_URL}/api/secondme/chat/stream`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    return await parseSSEStream(res);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("SecondMe 响应超时（60秒）");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**

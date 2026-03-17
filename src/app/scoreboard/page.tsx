@@ -20,6 +20,7 @@ interface MatchResult {
   emojiA: string
   emojiB: string
   compatibilityScore?: number
+  reasoning?: string
 }
 
 interface AgentStat {
@@ -47,10 +48,11 @@ interface EventPairing {
   agentA: EventAgent
   agentB: EventAgent
   compatibilityScore?: number
+  reasoning?: string
 }
 
 interface EventDate {
-  pairing?: EventPairing
+  pairing?: EventPairing & { reasoning?: string }
   ratings?: EventRating[]
 }
 
@@ -91,6 +93,7 @@ function ScoreboardContent() {
   const [agentStats, setAgentStats] = useState<AgentStat[]>([])
   const [eventName, setEventName] = useState<string>('')
   const [revealed, setRevealed] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -184,6 +187,7 @@ function ScoreboardContent() {
         emojiB: bEmoji,
         avgScore: Math.round(avg * 10) / 10,
         compatibilityScore: compat,
+        reasoning: date.pairing?.reasoning,
       })
 
       if (avg > bestScore && date.pairing) {
@@ -397,6 +401,24 @@ function ScoreboardContent() {
           <p className="text-secondary text-sm mt-1">
             {eventName ? `${eventName} - 结果揭晓` : '相亲大会结果揭晓'}
           </p>
+          {matches.length > 0 && (
+            <button
+              onClick={() => {
+                const lines = ['🦞 龙虾相亲大会 - 排行榜 🏆', '']
+                matches.slice(0, 5).forEach((m, i) => {
+                  lines.push(`${i + 1}. ${m.emojiA} ${m.agentA} ❤ ${m.agentB} ${m.emojiB} - ${m.avgScore}/10`)
+                })
+                if (matches.length > 5) lines.push(`...共 ${matches.length} 对`)
+                navigator.clipboard.writeText(lines.join('\n')).then(() => {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                })
+              }}
+              className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
+            >
+              {copied ? '已复制!' : '分享结果'}
+            </button>
+          )}
         </div>
 
         {/* Awards */}
@@ -486,7 +508,7 @@ function ScoreboardContent() {
               {matches.map((m, i) => (
                 <div
                   key={i}
-                  className={`bg-white rounded-xl border border-[var(--border)] px-3 sm:px-5 py-3 sm:py-4 flex items-center gap-2 sm:gap-4 transition-all duration-500 ${
+                  className={`bg-white rounded-xl border border-[var(--border)] px-3 sm:px-5 py-3 sm:py-4 transition-all duration-500 ${
                     i < 3 ? 'ring-1 ring-gold/20' : ''
                   }`}
                   style={{
@@ -495,25 +517,32 @@ function ScoreboardContent() {
                     transitionDelay: `${(awards.length + podiumMatches.length + i) * 80}ms`,
                   }}
                 >
-                  <span className={`text-sm sm:text-lg font-display font-bold w-6 sm:w-8 text-center flex-shrink-0 ${
-                    i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-muted'
-                  }`}>
-                    {i + 1}
-                  </span>
-                  <span className="text-lg sm:text-2xl flex-shrink-0">{m.emojiA}</span>
-                  <span className="text-xs sm:text-sm font-semibold flex-1 truncate min-w-0">{m.agentA}</span>
-                  <span className="text-coral flex-shrink-0">&hearts;</span>
-                  <span className="text-xs sm:text-sm font-semibold flex-1 text-right truncate min-w-0">{m.agentB}</span>
-                  <span className="text-lg sm:text-2xl flex-shrink-0">{m.emojiB}</span>
-                  <div className="w-14 sm:w-20 text-right flex-shrink-0">
-                    <span className="text-base sm:text-xl font-display font-bold text-coral">{m.avgScore}</span>
-                    <span className="text-[10px] text-muted">/10</span>
-                    {(m.compatibilityScore ?? 0) > 0 && (
-                      <div className="text-[9px] sm:text-[10px] text-muted">
-                        匹配{m.compatibilityScore}%
-                      </div>
-                    )}
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <span className={`text-sm sm:text-lg font-display font-bold w-6 sm:w-8 text-center flex-shrink-0 ${
+                      i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-muted'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <span className="text-lg sm:text-2xl flex-shrink-0">{m.emojiA}</span>
+                    <span className="text-xs sm:text-sm font-semibold flex-1 truncate min-w-0">{m.agentA}</span>
+                    <span className="text-coral flex-shrink-0">&hearts;</span>
+                    <span className="text-xs sm:text-sm font-semibold flex-1 text-right truncate min-w-0">{m.agentB}</span>
+                    <span className="text-lg sm:text-2xl flex-shrink-0">{m.emojiB}</span>
+                    <div className="w-14 sm:w-20 text-right flex-shrink-0">
+                      <span className="text-base sm:text-xl font-display font-bold text-coral">{m.avgScore}</span>
+                      <span className="text-[10px] text-muted">/10</span>
+                      {(m.compatibilityScore ?? 0) > 0 && (
+                        <div className="text-[9px] sm:text-[10px] text-muted">
+                          匹配{m.compatibilityScore}%
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {m.reasoning && (
+                    <div className="ml-8 sm:ml-12 mt-1.5 text-[11px] text-secondary/70 line-clamp-1">
+                      {m.reasoning}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

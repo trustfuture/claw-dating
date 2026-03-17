@@ -32,7 +32,6 @@ model Agent {
   personalityType String   @default("")
   interests       String   @default("[]") // Keep JSON text for current API compatibility
   catchphrase     String   @default("")
-  loveLang        String   @default("")
   secondmeRoute   String   @default("")
   status          String   @default("online")
   createdAt       DateTime @default(now())

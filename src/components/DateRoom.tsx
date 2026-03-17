@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface DateRoomProps {
   date: {
@@ -18,6 +18,7 @@ interface DateRoomProps {
       senderName: string
       content: string
       turn: number
+      createdAt?: string
     }[]
     ratings: {
       agentName: string
@@ -31,11 +32,26 @@ interface DateRoomProps {
   running: boolean
 }
 
+function relativeTime(dateStr?: string): string {
+  if (!dateStr) return ''
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (diff < 10) return '刚刚'
+  if (diff < 60) return `${diff}秒前`
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
+  return `${Math.floor(diff / 86400)}天前`
+}
+
 export function DateRoom({ date, onRun, running }: DateRoomProps) {
   const { pairing, messages, ratings, status } = date
   const { agentA, agentB } = pairing
   const isError = status === 'error' || status === 'failed'
   const isActive = status === 'in_progress'
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length])
 
   return (
     <div className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
@@ -52,6 +68,11 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
           {pairing.compatibilityScore > 0 && (
             <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gold/10 text-gold font-medium">
               匹配度 {pairing.compatibilityScore}%
+            </span>
+          )}
+          {isActive && messages.length > 0 && (
+            <span className="text-[10px] sm:text-xs text-muted font-medium tabular-nums">
+              {messages.length}/10 消息
             </span>
           )}
           {isActive && <ElapsedTimer startedAt={date.startedAt} />}
@@ -88,14 +109,18 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
                     }
                   `}
                 >
-                  <div className="text-[10px] sm:text-[11px] font-semibold text-muted mb-1">
-                    {msg.senderName}
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-muted mb-1 flex items-center gap-1.5">
+                    <span>{msg.senderName}</span>
+                    {msg.createdAt && (
+                      <span className="font-normal text-muted/60">{relativeTime(msg.createdAt)}</span>
+                    )}
                   </div>
                   {msg.content}
                 </div>
               </div>
             )
           })}
+          <div ref={messagesEndRef} />
         </div>
       ) : isActive && running ? (
         /* Loading skeleton */
@@ -201,7 +226,7 @@ export function DateRoom({ date, onRun, running }: DateRoomProps) {
                   {r.score}
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm font-semibold">{r.agentName}</div>
+                  <div className="text-xs sm:text-sm font-semibold">{r.agentName} 的评价</div>
                   <div className="text-[10px] sm:text-xs text-muted mt-0.5 line-clamp-2">{r.comment}</div>
                 </div>
               </div>

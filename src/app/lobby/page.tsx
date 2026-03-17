@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { AgentCard } from '@/components/AgentCard'
 import { CreateAgentForm } from '@/components/CreateAgentForm'
+import { useToast } from '@/components/Toast'
 
 interface AgentData {
   id: string
@@ -62,8 +63,12 @@ export default function LobbyPage() {
   const [eventHistory, setEventHistory] = useState<EventHistoryItem[]>([])
   const [creatingNewEvent, setCreatingNewEvent] = useState(false)
 
+  // Pagination
+  const [visibleCount, setVisibleCount] = useState(20)
+
   // Confirm dialog
   const [showConfirm, setShowConfirm] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
     if (!loading && !user) {
@@ -119,10 +124,10 @@ export default function LobbyPage() {
         fetchEventHistory()
       } else {
         const data = await res.json()
-        window.alert(data.error || '创建活动失败')
+        addToast('error', data.error || '创建活动失败')
       }
     } catch {
-      window.alert('网络错误，请重试')
+      addToast('error', '网络错误，请重试')
     } finally {
       setCreatingNewEvent(false)
     }
@@ -155,6 +160,7 @@ export default function LobbyPage() {
     setSearch('')
     setActivePersonalities(new Set())
     setSortMode('newest')
+    setVisibleCount(20)
   }
 
   // Filtered & sorted agents
@@ -207,10 +213,10 @@ export default function LobbyPage() {
         fetchAgents()
       } else {
         const data = await resp.json().catch(() => ({}))
-        window.alert(data.error || '删除失败，请重试')
+        addToast('error', data.error || '删除失败，请重试')
       }
     } catch {
-      window.alert('网络错误，请重试')
+      addToast('error', '网络错误，请重试')
     } finally {
       setDeleting(false)
     }
@@ -232,7 +238,7 @@ export default function LobbyPage() {
         eventId = data.event?.id
       }
       if (!eventId) {
-        window.alert('创建活动失败，请重试')
+        addToast('error', '创建活动失败，请重试')
         return
       }
 
@@ -241,10 +247,10 @@ export default function LobbyPage() {
       if (res.ok) {
         window.location.href = '/dates'
       } else {
-        window.alert('启动活动失败，请重试')
+        addToast('error', '启动活动失败，请重试')
       }
     } catch {
-      window.alert('网络错误，请重试')
+      addToast('error', '网络错误，请重试')
     } finally {
       setStarting(false)
     }
@@ -504,17 +510,29 @@ export default function LobbyPage() {
               <p>还没有嘉宾入场，成为第一个吧！</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {filteredAgents.map((a) => (
-                <AgentCard
-                  key={a.id}
-                  agent={a}
-                  isMe={a.id === agent?.id}
-                  onEdit={a.id === agent?.id ? () => setEditingAgent(true) : undefined}
-                  onDelete={a.id === agent?.id ? () => setShowDeleteConfirm(true) : undefined}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {filteredAgents.slice(0, visibleCount).map((a) => (
+                  <AgentCard
+                    key={a.id}
+                    agent={a}
+                    isMe={a.id === agent?.id}
+                    onEdit={a.id === agent?.id ? () => setEditingAgent(true) : undefined}
+                    onDelete={a.id === agent?.id ? () => setShowDeleteConfirm(true) : undefined}
+                  />
+                ))}
+              </div>
+              {filteredAgents.length > visibleCount && (
+                <div className="text-center mt-6">
+                  <button
+                    onClick={() => setVisibleCount((c) => c + 20)}
+                    className="px-6 py-2.5 rounded-xl text-sm font-semibold text-purple border border-purple/20 hover:bg-purple/5 transition-all duration-200"
+                  >
+                    加载更多（还有 {filteredAgents.length - visibleCount} 位）
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
 

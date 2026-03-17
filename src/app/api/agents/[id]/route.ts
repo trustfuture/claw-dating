@@ -46,14 +46,12 @@ export async function PUT(
       personalityType,
       interests,
       catchphrase,
-      loveLang,
     } = body as {
       name?: string;
       avatarEmoji?: string;
       personalityType?: string;
       interests?: string[];
       catchphrase?: string;
-      loveLang?: string;
     };
 
     // Build update data — only include fields that were provided
@@ -71,7 +69,6 @@ export async function PUT(
     if (personalityType !== undefined) updateData.personalityType = personalityType;
     if (interests !== undefined) updateData.interests = JSON.stringify(interests);
     if (catchphrase !== undefined) updateData.catchphrase = catchphrase;
-    if (loveLang !== undefined) updateData.loveLang = loveLang;
 
     const updated = await prisma.agent.update({
       where: { id },

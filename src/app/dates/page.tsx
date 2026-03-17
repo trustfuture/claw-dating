@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { DateRoom } from '@/components/DateRoom'
+import { useToast } from '@/components/Toast'
 
 interface DateData {
   id: string
@@ -139,6 +140,7 @@ export default function DatesPage() {
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
   const failCountRef = useRef(0)
   const [showError, setShowError] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -278,11 +280,11 @@ export default function DatesPage() {
         status: date.messages.length > 0 ? 'error' : 'pending',
         errorMessage: message,
       }))
-      window.alert(message)
+      addToast('error', message)
     } finally {
       clearRunningDate(dateId)
     }
-  }, [clearRunningDate, fetchEvent, markDateRunning, patchDate])
+  }, [addToast, clearRunningDate, fetchEvent, markDateRunning, patchDate])
 
   const runAllDates = async () => {
     const pendingDates = dates.filter((d) => d.status === 'pending')
@@ -335,10 +337,10 @@ export default function DatesPage() {
       if (res.ok) {
         fetchEvent()
       } else {
-        window.alert('启动下一轮失败，请重试')
+        addToast('error', '启动下一轮失败，请重试')
       }
     } catch {
-      window.alert('网络错误，请重试')
+      addToast('error', '网络错误，请重试')
     } finally {
       setActionPending(false)
     }
@@ -352,10 +354,10 @@ export default function DatesPage() {
       if (res.ok) {
         window.location.href = '/scoreboard'
       } else {
-        window.alert('结束活动失败，请重试')
+        addToast('error', '结束活动失败，请重试')
       }
     } catch {
-      window.alert('网络错误，请重试')
+      addToast('error', '网络错误，请重试')
     } finally {
       setActionPending(false)
     }
@@ -481,14 +483,30 @@ export default function DatesPage() {
             {roundNumbers.map((roundNum) => (
               <div key={roundNum}>
                 {/* Round header */}
-                {roundNumbers.length > 1 && (
-                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                    <h3 className="font-display text-base sm:text-lg font-bold text-secondary whitespace-nowrap">
-                      第 {roundNum} 轮
-                    </h3>
-                    <div className="h-px flex-1 bg-[var(--border)]" />
-                  </div>
-                )}
+                {roundNumbers.length > 1 && (() => {
+                  const roundDates = datesByRound[roundNum] || []
+                  const doneCount = roundDates.filter((d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed').length
+                  const pct = roundDates.length > 0 ? (doneCount / roundDates.length) * 100 : 0
+                  return (
+                    <div className="mb-3 sm:mb-4">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-display text-base sm:text-lg font-bold text-secondary whitespace-nowrap">
+                          第 {roundNum} 轮
+                        </h3>
+                        <span className="text-[10px] text-muted">{doneCount}/{roundDates.length}</span>
+                        <div className="h-px flex-1 bg-[var(--border)]" />
+                      </div>
+                      {roundDates.length > 0 && pct < 100 && (
+                        <div className="mt-1.5 h-1 rounded-full bg-[var(--border)] overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-purple to-teal transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="space-y-4 sm:space-y-6">
                   {(datesByRound[roundNum] || []).map((date) => (

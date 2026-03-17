@@ -57,7 +57,6 @@ function normalizeAgents(rows) {
     personalityType: row.personalityType ?? "",
     interests: row.interests ?? "[]",
     catchphrase: row.catchphrase ?? "",
-    loveLang: row.loveLang ?? "",
     secondmeRoute: row.secondmeRoute ?? "",
     status: row.status ?? "online",
     createdAt: new Date(row.createdAt),

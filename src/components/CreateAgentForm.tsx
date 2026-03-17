@@ -3,10 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 const EMOJI_OPTIONS = ['🦞', '🐙', '🦊', '🐱', '🐶', '🦄', '🐼', '🦋', '🌸', '🔮', '🎭', '🎪']
-const PERSONALITY_TYPES = [
-  '浪漫美食家', '冒险旅行者', '文艺书虫', '科技极客',
-  '运动达人', '音乐灵魂', '哲学思考者', '幽默大师',
+const PERSONALITY_TYPES: { label: string; desc: string }[] = [
+  { label: '浪漫美食家', desc: '用美食表达爱意' },
+  { label: '冒险旅行者', desc: '向往远方和未知' },
+  { label: '文艺书虫', desc: '沉浸在文字世界' },
+  { label: '科技极客', desc: '热爱技术和创新' },
+  { label: '运动达人', desc: '活力满满的生活' },
+  { label: '音乐灵魂', desc: '用旋律感受世界' },
+  { label: '哲学思考者', desc: '追问生命的意义' },
+  { label: '幽默大师', desc: '让快乐感染他人' },
 ]
+
+const INTEREST_SUGGESTIONS = ['美食', '旅行', '音乐', '电影', '健身', '读书', '游戏', '摄影', '烹饪', '绘画']
 
 const DRAFT_KEY = 'claw-agent-draft'
 
@@ -43,6 +51,8 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
   const [name, setName] = useState(editAgent?.name ?? '')
   const [avatarEmoji, setAvatarEmoji] = useState(editAgent?.avatarEmoji ?? '')
   const [personalityType, setPersonalityType] = useState(editAgent?.personalityType ?? '')
+  const [interests, setInterests] = useState<string[]>(editAgent?.interests ?? [])
+  const [interestInput, setInterestInput] = useState('')
   const [catchphrase, setCatchphrase] = useState(editAgent?.catchphrase ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -71,6 +81,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
         if (parsed.avatarEmoji) setAvatarEmoji(parsed.avatarEmoji)
         if (parsed.personalityType) setPersonalityType(parsed.personalityType)
         if (parsed.catchphrase) setCatchphrase(parsed.catchphrase)
+        if (Array.isArray(parsed.interests)) setInterests(parsed.interests)
       }
     } catch {
       // ignore
@@ -84,7 +95,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
     draftTimerRef.current = setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, avatarEmoji, personalityType, catchphrase }))
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, avatarEmoji, personalityType, catchphrase, interests }))
       } catch {
         // ignore
       }
@@ -92,7 +103,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
     }
-  }, [name, avatarEmoji, personalityType, catchphrase, isEditMode])
+  }, [name, avatarEmoji, personalityType, catchphrase, interests, isEditMode])
 
   // Cleanup success timer
   useEffect(() => {
@@ -140,7 +151,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
         avatarEmoji,
         personalityType,
         catchphrase: catchphrase.trim(),
-        interests: [],
+        interests,
       }
 
       const url = isEditMode ? `/api/agents/${editAgent!.id}` : '/api/agents'
@@ -244,26 +255,90 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
           人格类型
         </label>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          {PERSONALITY_TYPES.map((type) => (
+          {PERSONALITY_TYPES.map(({ label, desc }) => (
             <button
-              key={type}
+              key={label}
               type="button"
-              onClick={() => { setPersonalityType(type); setTouched(t => ({ ...t, personalityType: true })) }}
+              onClick={() => { setPersonalityType(label); setTouched(t => ({ ...t, personalityType: true })) }}
               className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                ${personalityType === type
+                px-3 py-1.5 rounded-lg text-xs font-medium transition-all group relative
+                ${personalityType === label
                   ? 'bg-gold/15 text-gold border border-gold/30'
                   : 'bg-[var(--bg-elevated)] text-secondary border border-transparent hover:border-[var(--border)]'
                 }
               `}
+              title={desc}
             >
-              {type}
+              {label}
             </button>
           ))}
         </div>
         {touched.personalityType && errors.personalityType && (
           <p className="text-xs text-coral mt-1.5">{errors.personalityType}</p>
         )}
+      </div>
+
+      {/* Interests */}
+      <div>
+        <label className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2 block">
+          兴趣标签
+        </label>
+        {interests.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {interests.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-teal/10 text-teal border border-teal/20"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => setInterests((prev) => prev.filter((t) => t !== tag))}
+                  className="hover:text-coral transition-colors"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={interestInput}
+            onChange={(e) => setInterestInput(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ',') && interestInput.trim()) {
+                e.preventDefault()
+                const tag = interestInput.trim().replace(/,/g, '')
+                if (tag && !interests.includes(tag) && interests.length < 10) {
+                  setInterests((prev) => [...prev, tag])
+                }
+                setInterestInput('')
+              }
+            }}
+            placeholder="输入兴趣后按回车添加"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-purple/30 focus:border-purple/50 transition-all"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {INTEREST_SUGGESTIONS.filter((s) => !interests.includes(s)).slice(0, 8).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                if (interests.length < 10) {
+                  setInterests((prev) => [...prev, s])
+                }
+              }}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[var(--bg-elevated)] text-muted hover:text-secondary hover:border-[var(--border)] border border-transparent transition-all"
+            >
+              + {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Catchphrase */}
