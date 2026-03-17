@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .env
+.env.local
 .venv/
 venv/
 node_modules/
@@ -9,3 +10,7 @@ dist/
 *.egg-info/
 .playwright-mcp/
 *.png
+.next/
+prisma/dev.db
+prisma/dev.db-journal
+.vercel

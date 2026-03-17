@@ -1,0 +1,94 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans SC", sans-serif;
+  --font-display: "Playfair Display", serif;
+
+  --color-bg: #faf9f7;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #f5f3ef;
+  --color-primary: #1a1a1a;
+  --color-secondary: #6b7280;
+  --color-muted: #9ca3af;
+  --color-coral: #e85d4d;
+  --color-coral-soft: #f28c7d;
+  --color-gold: #d4a853;
+  --color-teal: #4ecdc4;
+  --color-purple: #6366f1;
+  --color-border: #e5e7eb;
+}
+
+:root {
+  --bg: #faf9f7;
+  --bg-card: #ffffff;
+  --bg-elevated: #f5f3ef;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --coral: #e85d4d;
+  --coral-soft: #f28c7d;
+  --gold: #d4a853;
+  --teal: #4ecdc4;
+  --purple: #6366f1;
+  --border: #e5e7eb;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Minimum touch target size for interactive elements */
+button,
+a[role="button"],
+[type="button"],
+[type="submit"],
+[role="button"] {
+  min-height: 44px;
+}
+
+/* Better tap highlighting on mobile */
+@media (hover: none) {
+  button,
+  a {
+    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
+
+@keyframes pulse-gentle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse-gentle { animation: pulse-gentle 1.5s ease-in-out infinite; }
