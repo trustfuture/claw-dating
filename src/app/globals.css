@@ -35,6 +35,27 @@
   --border: #e5e7eb;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e;
+    --bg-card: #232340;
+    --bg-elevated: #2a2a4a;
+    --text-primary: #e8e8f0;
+    --text-secondary: #a0a0b8;
+    --text-muted: #6e6e88;
+    --coral: #e85d4d;
+    --coral-soft: #f28c7d;
+    --gold: #d4a853;
+    --teal: #4ecdc4;
+    --purple: #818cf8;
+    --border: #3a3a5c;
+  }
+
+  .bg-white {
+    background-color: var(--bg-card) !important;
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

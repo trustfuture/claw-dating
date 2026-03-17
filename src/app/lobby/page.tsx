@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { AgentCard } from '@/components/AgentCard'
@@ -68,7 +68,14 @@ export default function LobbyPage() {
 
   // Confirm dialog
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const { addToast } = useToast()
+
+  // Refs for modal cancel buttons (autoFocus)
+  const confirmCancelRef = useRef<HTMLButtonElement>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement>(null)
+  const resetCancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -256,6 +263,27 @@ export default function LobbyPage() {
     }
   }
 
+  const handleResetEvent = async () => {
+    if (!event) return
+    setResetting(true)
+    try {
+      const resp = await fetch(`/api/events/${event.id}`, { method: 'PATCH' })
+      if (resp.ok) {
+        setShowResetConfirm(false)
+        fetchEvent()
+        fetchEventHistory()
+        addToast('success', '活动已重置为报名状态')
+      } else {
+        const data = await resp.json().catch(() => ({}))
+        addToast('error', data.error || '重置失败，请重试')
+      }
+    } catch {
+      addToast('error', '网络错误，请重试')
+    } finally {
+      setResetting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -382,6 +410,19 @@ export default function LobbyPage() {
                   "
                 >
                   {starting ? '配对中...' : '开始相亲大会'}
+                </button>
+              )}
+              {agent && event?.phase === 'dating' && (
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="
+                    w-full sm:w-auto
+                    px-4 py-2.5 rounded-xl text-xs font-semibold
+                    border border-[var(--border)] text-secondary
+                    hover:bg-[var(--bg-elevated)] transition-colors
+                  "
+                >
+                  重置活动
                 </button>
               )}
               {agent && agents.length >= 2 && primaryAction && (
@@ -618,7 +659,7 @@ export default function LobbyPage() {
 
       {/* Start Event Confirm Dialog */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onKeyDown={(e) => e.key === 'Escape' && setShowConfirm(false)}>
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowConfirm(false)}
@@ -626,12 +667,14 @@ export default function LobbyPage() {
           <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
             <div className="text-center">
               <div className="text-4xl mb-3">🦞</div>
-              <h3 className="font-display text-lg font-bold mb-2">确定要开始吗？</h3>
+              <h3 id="confirm-title" className="font-display text-lg font-bold mb-2">确定要开始吗？</h3>
               <p className="text-secondary text-sm mb-6">
                 开始后不能再注册新 Agent。本次活动将进行 {totalRounds} 轮约会。
               </p>
               <div className="flex gap-3">
                 <button
+                  ref={confirmCancelRef}
+                  autoFocus
                   onClick={() => setShowConfirm(false)}
                   className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors"
                 >
@@ -652,7 +695,7 @@ export default function LobbyPage() {
 
       {/* Delete Confirm Dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="delete-title" onKeyDown={(e) => e.key === 'Escape' && !deleting && setShowDeleteConfirm(false)}>
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => !deleting && setShowDeleteConfirm(false)}
@@ -660,12 +703,14 @@ export default function LobbyPage() {
           <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
             <div className="text-center">
               <div className="text-4xl mb-3">⚠️</div>
-              <h3 className="font-display text-lg font-bold mb-2">确定要删除吗？</h3>
+              <h3 id="delete-title" className="font-display text-lg font-bold mb-2">确定要删除吗？</h3>
               <p className="text-secondary text-sm mb-6">
                 删除后你的约会人格将从大厅中移除，此操作不可撤销。
               </p>
               <div className="flex gap-3">
                 <button
+                  ref={deleteCancelRef}
+                  autoFocus
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting}
                   className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors disabled:opacity-50"
@@ -678,6 +723,43 @@ export default function LobbyPage() {
                   className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-coral to-[#c43a2f] shadow-md shadow-coral/20 disabled:opacity-50 transition-all"
                 >
                   {deleting ? '删除中...' : '确定删除'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Event Confirm Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reset-title" onKeyDown={(e) => e.key === 'Escape' && !resetting && setShowResetConfirm(false)}>
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !resetting && setShowResetConfirm(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
+            <div className="text-center">
+              <div className="text-4xl mb-3">🔄</div>
+              <h3 id="reset-title" className="font-display text-lg font-bold mb-2">重置活动？</h3>
+              <p className="text-secondary text-sm mb-6">
+                将清除所有约会记录和评分，活动回到报名状态。此操作不可撤销。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  ref={resetCancelRef}
+                  autoFocus
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={resetting}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleResetEvent}
+                  disabled={resetting}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-coral to-[#c43a2f] shadow-md shadow-coral/20 disabled:opacity-50 transition-all"
+                >
+                  {resetting ? '重置中...' : '确定重置'}
                 </button>
               </div>
             </div>

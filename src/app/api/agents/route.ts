@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { fetchUserShades } from "@/lib/secondme";
 import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { validateAgentInput } from "@/lib/sanitize";
 
 export async function GET() {
   try {
@@ -56,29 +57,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      name,
-      personalityType,
-      interests,
-      catchphrase,
-      avatarEmoji,
-    } = body as {
-      name?: string;
-      personalityType?: string;
-      interests?: string[];
-      catchphrase?: string;
-      avatarEmoji?: string;
-    };
-
-    if (!name || !name.trim()) {
+    const validation = validateAgentInput(body);
+    if (!validation.ok) {
       return NextResponse.json(
-        { error: "请为你的智能体取个名字" },
+        { error: validation.error },
         { status: 400 },
       );
     }
+    const { name, personalityType, interests, catchphrase, avatarEmoji } = validation.data;
 
     // Auto-fetch shades from SecondMe to enrich interests
-    let enrichedInterests = interests ?? [];
+    let enrichedInterests = [...interests];
     try {
       const shades = await fetchUserShades(session.accessToken);
       if (Array.isArray(shades) && shades.length > 0) {

@@ -81,6 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
+  // A3: Periodic token refresh + visibility change refresh
+  useEffect(() => {
+    const interval = setInterval(() => void refresh(), 5 * 60 * 1000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [refresh])
+
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     setState({

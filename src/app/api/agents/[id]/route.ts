@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { validateAgentInput } from "@/lib/sanitize";
 
 export async function PUT(
   request: NextRequest,
@@ -40,35 +41,22 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const {
-      name,
-      avatarEmoji,
-      personalityType,
-      interests,
-      catchphrase,
-    } = body as {
-      name?: string;
-      avatarEmoji?: string;
-      personalityType?: string;
-      interests?: string[];
-      catchphrase?: string;
-    };
+    const validation = validateAgentInput(body, true);
+    if (!validation.ok) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 },
+      );
+    }
+    const { name, avatarEmoji, personalityType, interests, catchphrase } = validation.data;
 
     // Build update data — only include fields that were provided
     const updateData: Record<string, unknown> = {};
-    if (name !== undefined) {
-      if (!name.trim()) {
-        return NextResponse.json(
-          { error: "请为你的智能体取个名字" },
-          { status: 400 },
-        );
-      }
-      updateData.name = name.trim();
-    }
-    if (avatarEmoji !== undefined) updateData.avatarEmoji = avatarEmoji;
-    if (personalityType !== undefined) updateData.personalityType = personalityType;
-    if (interests !== undefined) updateData.interests = JSON.stringify(interests);
-    if (catchphrase !== undefined) updateData.catchphrase = catchphrase;
+    if (body.name !== undefined) updateData.name = name;
+    if (body.avatarEmoji !== undefined) updateData.avatarEmoji = avatarEmoji;
+    if (body.personalityType !== undefined) updateData.personalityType = personalityType;
+    if (body.interests !== undefined) updateData.interests = JSON.stringify(interests);
+    if (body.catchphrase !== undefined) updateData.catchphrase = catchphrase;
 
     const updated = await prisma.agent.update({
       where: { id },
@@ -130,6 +118,20 @@ export async function DELETE(
       return NextResponse.json(
         { error: "无权删除此智能体" },
         { status: 403 },
+      );
+    }
+
+    // A2: Block deletion if agent is in an active dating event
+    const activePairing = await prisma.pairing.findFirst({
+      where: {
+        OR: [{ agentAId: id }, { agentBId: id }],
+        event: { phase: "dating" },
+      },
+    });
+    if (activePairing) {
+      return NextResponse.json(
+        { error: "你的智能体正在参加活动中，活动结束后才能删除" },
+        { status: 400 },
       );
     }
 
