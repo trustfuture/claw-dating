@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AgentSearchFilter } from '@/components/AgentSearchFilter'
 import { EventControls } from '@/components/EventControls'
+import { ScrollToTop } from '@/components/ScrollToTop'
 import type { EventHistoryItem } from '@/components/EventHistory'
 
 const CreateAgentForm = dynamic(() => import('@/components/CreateAgentForm').then(m => ({ default: m.CreateAgentForm })), { ssr: false })
@@ -567,6 +568,8 @@ export default function LobbyPage() {
         confirmLabel="确定重置"
         confirmingLabel="重置中..."
       />
+
+      <ScrollToTop />
     </div>
   )
 }

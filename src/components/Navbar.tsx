@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { useLocale } from '@/hooks/useLocale'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export function Navbar() {
   const pathname = usePathname()
@@ -13,6 +14,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { toggle: toggleTheme, isDark } = useTheme()
   const { locale, toggle: toggleLocale, t } = useLocale()
+  useKeyboardShortcuts()
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)]">

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useLocale } from '@/hooks/useLocale'
 import { Navbar } from '@/components/Navbar'
+import { ScrollToTop } from '@/components/ScrollToTop'
 
 interface Award {
   title: string
@@ -834,6 +835,8 @@ function ScoreboardContent() {
           )}
         </section>
       </main>
+
+      <ScrollToTop />
     </div>
   )
 }

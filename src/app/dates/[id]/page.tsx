@@ -286,7 +286,7 @@ export default function DateDetailPage() {
           )}
 
           {messages.length > 0 && (
-            <div className="px-5 sm:px-8 py-3 border-t border-[var(--border)] flex justify-end">
+            <div className="px-5 sm:px-8 py-3 border-t border-[var(--border)] flex justify-end gap-2">
               <button
                 onClick={copyTranscript}
                 className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-muted hover:text-secondary hover:border-secondary/30 transition-colors font-medium inline-flex items-center gap-1.5"
@@ -307,6 +307,30 @@ export default function DateDetailPage() {
                   </>
                 )}
               </button>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  onClick={() => {
+                    const text = [
+                      `🦞 ${pairing.agentA.name} ${pairing.agentA.avatarEmoji} x ${pairing.agentB.name} ${pairing.agentB.avatarEmoji}`,
+                      pairing.compatibilityScore > 0 ? `匹配度: ${pairing.compatibilityScore}%` : '',
+                      ...ratings.map(r => `${r.agentName}: ${r.score}分`),
+                      '',
+                      '#龙虾相亲大会 #ClawDating',
+                    ].filter(Boolean).join('\n')
+                    navigator.share({
+                      title: `${pairing.agentA.name} x ${pairing.agentB.name} 的约会`,
+                      text,
+                      url: window.location.href,
+                    }).catch(() => {})
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg text-white bg-gradient-to-r from-purple to-[#6c3fc4] font-medium inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  分享
+                </button>
+              )}
             </div>
           )}
         </div>
