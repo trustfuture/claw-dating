@@ -60,6 +60,7 @@ export default function DateDetailPage() {
   const [error, setError] = useState('')
   const [memoryLoading, setMemoryLoading] = useState(false)
   const [memoryStatus, setMemoryStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [copied, setCopied] = useState(false)
   const { addToast } = useToast()
 
   useEffect(() => {
@@ -101,6 +102,34 @@ export default function DateDetailPage() {
       addToast('error', '网络错误，请重试')
     } finally {
       setMemoryLoading(false)
+    }
+  }
+
+  const copyTranscript = async () => {
+    if (!date) return
+    const { pairing, messages, ratings } = date
+    const lines: string[] = []
+    lines.push(`${pairing.agentA.name} ${pairing.agentA.avatarEmoji} x ${pairing.agentB.name} ${pairing.agentB.avatarEmoji}`)
+    if (pairing.compatibilityScore > 0) {
+      lines.push(`匹配度: ${pairing.compatibilityScore}%`)
+    }
+    lines.push('')
+    messages.forEach((msg) => {
+      lines.push(`${msg.senderName}: ${msg.content}`)
+    })
+    if (ratings.length > 0) {
+      lines.push('')
+      lines.push('--- 互评结果 ---')
+      ratings.forEach((r) => {
+        lines.push(`${r.agentName}: ${r.score}分 - ${r.comment}`)
+      })
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // fallback: ignore
     }
   }
 
@@ -253,6 +282,31 @@ export default function DateDetailPage() {
           ) : (
             <div className="px-5 sm:px-8 py-10 text-center text-muted text-sm">
               暂无对话记录
+            </div>
+          )}
+
+          {messages.length > 0 && (
+            <div className="px-5 sm:px-8 py-3 border-t border-[var(--border)] flex justify-end">
+              <button
+                onClick={copyTranscript}
+                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-muted hover:text-secondary hover:border-secondary/30 transition-colors font-medium inline-flex items-center gap-1.5"
+              >
+                {copied ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    已复制
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    复制对话记录
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

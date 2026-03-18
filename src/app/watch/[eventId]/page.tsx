@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, use } from 'react'
 import Link from 'next/link'
 import { POLLING } from '@/lib/constants'
+import { StatusBadge } from '@/components/StatusBadge'
 
 interface WatchDate {
   id: string
@@ -159,17 +160,6 @@ function WatchDateCard({ date }: { date: WatchDate }) {
   const isActive = status === 'in_progress'
   const isCompleted = status === 'completed'
 
-  const statusConfig: Record<string, { label: string; cls: string }> = {
-    pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500' },
-    in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple' },
-    completed: { label: '已完成', cls: 'bg-teal/10 text-teal' },
-    error: { label: '失败', cls: 'bg-coral/10 text-coral' },
-    failed: { label: '失败', cls: 'bg-coral/10 text-coral' },
-    cancelled: { label: '已取消', cls: 'bg-gray-100 text-gray-500' },
-  }
-
-  const sc = statusConfig[status] || statusConfig.pending
-
   return (
     <div className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
       {/* Header */}
@@ -187,9 +177,7 @@ function WatchDateCard({ date }: { date: WatchDate }) {
               {pairing.compatibilityScore}%
             </span>
           )}
-          <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium ${sc.cls}`}>
-            {sc.label}
-          </span>
+          <StatusBadge status={status} />
         </div>
       </div>
 

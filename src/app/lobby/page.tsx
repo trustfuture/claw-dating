@@ -1,15 +1,18 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { AgentCard } from '@/components/AgentCard'
-import { CreateAgentForm } from '@/components/CreateAgentForm'
 import { useToast } from '@/components/Toast'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { AgentSearchFilter } from '@/components/AgentSearchFilter'
-import { EventHistory, type EventHistoryItem } from '@/components/EventHistory'
 import { EventControls } from '@/components/EventControls'
+import type { EventHistoryItem } from '@/components/EventHistory'
+
+const CreateAgentForm = dynamic(() => import('@/components/CreateAgentForm').then(m => ({ default: m.CreateAgentForm })), { ssr: false })
+const EventHistory = dynamic(() => import('@/components/EventHistory').then(m => ({ default: m.EventHistory })), { ssr: false })
 
 interface AgentData {
   id: string
@@ -424,9 +427,34 @@ export default function LobbyPage() {
               </button>
             </div>
           ) : agents.length === 0 ? (
-            <div className="text-center py-20 text-muted">
-              <div className="text-5xl mb-4">🦞</div>
-              <p>还没有嘉宾入场，成为第一个吧！</p>
+            <div className="text-center py-16 sm:py-20">
+              <div className="text-6xl mb-4">🦞</div>
+              <h3 className="font-display text-lg font-bold mb-2">还没有嘉宾入场</h3>
+              <p className="text-muted text-sm mb-6 max-w-sm mx-auto">
+                创建你的约会人格，成为第一位入场的嘉宾吧！
+                <br />
+                至少需要 2 位嘉宾才能开始相亲大会。
+              </p>
+              <div className="flex items-center justify-center gap-4 text-xs text-muted">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple/30" />
+                  <span>创建人格</span>
+                </div>
+                <svg className="w-4 h-4 text-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple/30" />
+                  <span>等待匹配</span>
+                </div>
+                <svg className="w-4 h-4 text-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple/30" />
+                  <span>开始约会</span>
+                </div>
+              </div>
             </div>
           ) : (
             <>

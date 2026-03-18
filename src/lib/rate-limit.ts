@@ -80,4 +80,8 @@ export const RATE_LIMITS = {
   dateRun: { limit: 10, windowMs: 60_000 },
   /** General API: 60 per minute */
   general: { limit: 60, windowMs: 60_000 },
+  /** A2A agent registration: 3 per minute */
+  a2aRegister: { limit: 3, windowMs: 60_000 },
+  /** Scoreboard fetch: 10 per 10 seconds */
+  scoreboardFetch: { limit: 10, windowMs: 10_000 },
 } as const;

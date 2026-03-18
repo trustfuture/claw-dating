@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { MessageBubble } from '@/components/MessageBubble'
+import { StatusBadge } from '@/components/StatusBadge'
 
 interface DateRoomProps {
   date: {
@@ -31,16 +33,6 @@ interface DateRoomProps {
   onRun: () => void
   onCancel?: () => void
   running: boolean
-}
-
-function relativeTime(dateStr?: string): string {
-  if (!dateStr) return ''
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (diff < 10) return '刚刚'
-  if (diff < 60) return `${diff}秒前`
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
-  return `${Math.floor(diff / 86400)}天前`
 }
 
 export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
@@ -127,28 +119,14 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
           {messages.map((msg, i) => {
             const isA = msg.senderName === agentA.name
             return (
-              <div key={i} className={`flex gap-2 sm:gap-3 ${isA ? '' : 'flex-row-reverse'}`}>
-                <span className="text-base sm:text-lg flex-shrink-0">
-                  {isA ? agentA.avatarEmoji : agentB.avatarEmoji}
-                </span>
-                <div
-                  className={`
-                    max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words
-                    ${isA
-                      ? 'bg-[var(--bg-elevated)] rounded-tl-sm'
-                      : 'bg-purple/5 rounded-tr-sm'
-                    }
-                  `}
-                >
-                  <div className="text-[10px] sm:text-[11px] font-semibold text-muted mb-1 flex items-center gap-1.5">
-                    <span>{msg.senderName}</span>
-                    {msg.createdAt && (
-                      <span className="font-normal text-muted/60">{relativeTime(msg.createdAt)}</span>
-                    )}
-                  </div>
-                  {msg.content}
-                </div>
-              </div>
+              <MessageBubble
+                key={i}
+                senderName={msg.senderName}
+                senderEmoji={isA ? agentA.avatarEmoji : agentB.avatarEmoji}
+                content={msg.content}
+                isRight={!isA}
+                timestamp={msg.createdAt}
+              />
             )
           })}
           <div ref={messagesEndRef} />
@@ -271,24 +249,6 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
         </div>
       )}
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; cls: string; dotCls: string }> = {
-    pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
-    in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple', dotCls: 'bg-purple' },
-    completed: { label: '已完成', cls: 'bg-teal/10 text-teal', dotCls: 'bg-teal' },
-    cancelled: { label: '已取消', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
-    error: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
-    failed: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
-  }
-  const c = config[status] || config.pending
-  return (
-    <span role="status" className={`text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium inline-flex items-center gap-1 ${c.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dotCls}`} aria-label={c.label} />
-      {c.label}
-    </span>
   )
 }
 

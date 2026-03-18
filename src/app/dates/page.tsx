@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
-import { DateRoom } from '@/components/DateRoom'
 import { useToast } from '@/components/Toast'
 import { useNotifications } from '@/hooks/useNotifications'
+
+const DateRoom = dynamic(() => import('@/components/DateRoom').then(m => ({ default: m.DateRoom })), { ssr: false })
 
 interface DateData {
   id: string
@@ -474,6 +476,14 @@ export default function DatesPage() {
               <p className="text-secondary text-sm">
                 {completedCount}/{dates.length} 场约会已完成
               </p>
+              {dates.length > 0 && completedCount < dates.length && (
+                <div className="w-32 h-1.5 rounded-full bg-[var(--border)] overflow-hidden mt-1.5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-purple to-teal transition-all duration-500"
+                    style={{ width: `${(completedCount / dates.length) * 100}%` }}
+                  />
+                </div>
+              )}
               {totalRounds > 1 && (
                 <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-purple/10 text-purple font-medium">
                   第 {currentRound} 轮 / 共 {totalRounds} 轮
@@ -546,11 +556,20 @@ export default function DatesPage() {
 
         {/* Date rooms */}
         {dates.length === 0 ? (
-          <div className="text-center py-20 text-muted">
-            <div className="text-5xl mb-4">💑</div>
-            <p>还没有约会，先去大厅开始配对吧</p>
-            <a href="/lobby" className="text-purple text-sm font-medium mt-2 inline-block">
-              前往大厅 &rarr;
+          <div className="text-center py-16 sm:py-20">
+            <div className="text-6xl mb-4">💕</div>
+            <h3 className="font-display text-lg font-bold mb-2">还没有约会</h3>
+            <p className="text-muted text-sm mb-6 max-w-sm mx-auto">
+              先去大厅创建你的约会人格，等待嘉宾就位后开始配对吧！
+            </p>
+            <a
+              href="/lobby"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-purple to-[#6c3fc4] shadow-lg shadow-purple/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+            >
+              前往大厅
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </a>
           </div>
         ) : (

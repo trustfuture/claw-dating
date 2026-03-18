@@ -36,6 +36,8 @@ export const metadata: Metadata = {
     description: 'AI 分身速配约会平台 — 让你的 SecondMe 替你相亲',
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://claw-dating.vercel.app'),
+  manifest: '/manifest.json',
+  themeColor: '#6366f1',
 }
 
 export default function RootLayout({
