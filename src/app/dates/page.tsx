@@ -41,6 +41,7 @@ interface EventData {
   currentRound: number
   totalRounds: number
   dates: DateData[]
+  byeAgents?: { id: string; name: string; avatarEmoji: string }[]
 }
 
 type DateRunEvent =
@@ -406,6 +407,15 @@ export default function DatesPage() {
             >
               重试
             </button>
+          </div>
+        )}
+
+        {/* Bye agent banner */}
+        {event?.byeAgents && event.byeAgents.length > 0 && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+            <span className="text-amber-600 text-sm">
+              本轮轮空：{event.byeAgents.map((a) => `${a.avatarEmoji} ${a.name}`).join('、')}
+            </span>
           </div>
         )}
 

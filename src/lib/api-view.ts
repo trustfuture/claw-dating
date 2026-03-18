@@ -40,6 +40,7 @@ type EventRecord = {
   phase: string;
   currentRound: number;
   totalRounds: number;
+  participantIds?: string;
   createdAt: Date;
   pairings: Array<{
     id: string;
@@ -405,6 +406,50 @@ async function serializeEvent(event: EventRecord) {
 
   const agentStats = computeAgentStats(pairings, agentMap);
 
+  // Compute bye agents (those in participantIds but not in any pairing for the current round)
+  const participantIdList: string[] = (() => {
+    try {
+      const parsed = JSON.parse((event as EventRecord & { participantIds?: string }).participantIds || "[]");
+      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const currentRoundPairings = pairings.filter((p) => p.round === event.currentRound);
+  const pairedAgentIds = new Set(
+    currentRoundPairings.flatMap((p) => [p.agentAId, p.agentBId]),
+  );
+  const byeAgentIds = participantIdList.filter((id) => !pairedAgentIds.has(id));
+
+  // Load any bye agents not already in agentMap
+  const missingByeIds = byeAgentIds.filter((id) => !agentMap.has(id));
+  if (missingByeIds.length > 0) {
+    const [extraAgents, extraA2a] = await Promise.all([
+      prisma.agent.findMany({
+        where: { id: { in: missingByeIds } },
+        select: { id: true, name: true, avatarEmoji: true, personalityType: true },
+      }),
+      prisma.a2AAgent.findMany({
+        where: { id: { in: missingByeIds } },
+        select: { id: true, name: true, avatarEmoji: true, personalityType: true },
+      }),
+    ]);
+    for (const a of [...extraAgents, ...extraA2a]) {
+      agentMap.set(a.id, a);
+    }
+  }
+
+  // Resolve bye agent details from the agent map
+  const byeAgents = byeAgentIds.map((id) => {
+    const agent = agentMap.get(id);
+    return {
+      id,
+      name: agent?.name ?? "神秘嘉宾",
+      avatarEmoji: agent?.avatarEmoji ?? "🦞",
+    };
+  });
+
   return {
     id: event.id,
     name: event.name,
@@ -416,6 +461,7 @@ async function serializeEvent(event: EventRecord) {
     pairings: serializedPairings,
     dates: serializedPairings.flatMap((pairing) => pairing.dateSessions),
     agentStats,
+    byeAgents,
   };
 }
 

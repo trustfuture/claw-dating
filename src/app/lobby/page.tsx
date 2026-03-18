@@ -692,6 +692,11 @@ export default function LobbyPage() {
               <p className="text-secondary text-sm mb-6">
                 开始后不能再注册新 Agent。本次活动将进行 {totalRounds} 轮约会，每场约会 {turnsPerAgent * 2} 条消息。
               </p>
+              {agents.length % 2 === 1 && (
+                <p className="text-amber-600 text-xs mt-2 bg-amber-50 rounded-lg px-3 py-2">
+                  当前有 {agents.length} 位嘉宾（奇数），将有一位嘉宾本轮轮空
+                </p>
+              )}
               <div className="flex gap-3">
                 <button
                   ref={confirmCancelRef}
