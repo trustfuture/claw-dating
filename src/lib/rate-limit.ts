@@ -1,25 +1,4 @@
-/**
- * Simple in-memory rate limiter using sliding window.
- * Not suitable for multi-instance deployments; use Redis-backed
- * rate limiting for production scale.
- */
-
-interface RateLimitEntry {
-  timestamps: number[];
-}
-
-const store = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    entry.timestamps = entry.timestamps.filter((t) => now - t < 120_000);
-    if (entry.timestamps.length === 0) {
-      store.delete(key);
-    }
-  }
-}, 300_000);
+import { Redis } from "@upstash/redis";
 
 export interface RateLimitConfig {
   /** Maximum requests allowed in the window */
@@ -34,40 +13,116 @@ export interface RateLimitResult {
   resetMs: number;
 }
 
+// Redis client (lazy init, null if not configured)
+let redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    redis = new Redis({ url, token });
+  }
+  return redis;
+}
+
+// In-memory fallback
+const memStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkMemoryRateLimit(
+  key: string,
+  config: RateLimitConfig,
+): RateLimitResult {
+  const now = Date.now();
+  const entry = memStore.get(key);
+
+  if (!entry || now >= entry.resetAt) {
+    memStore.set(key, { count: 1, resetAt: now + config.windowMs });
+    return {
+      allowed: true,
+      remaining: config.limit - 1,
+      resetMs: config.windowMs,
+    };
+  }
+
+  entry.count++;
+  if (entry.count > config.limit) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetMs: entry.resetAt - now,
+    };
+  }
+
+  return {
+    allowed: true,
+    remaining: config.limit - entry.count,
+    resetMs: entry.resetAt - now,
+  };
+}
+
+// Periodic cleanup of expired memory entries
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of memStore) {
+      if (now >= entry.resetAt) memStore.delete(key);
+    }
+  }, 60_000);
+}
+
+async function checkRedisRateLimit(
+  client: Redis,
+  key: string,
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  const redisKey = `rl:${key}`;
+  const windowSec = Math.ceil(config.windowMs / 1000);
+
+  try {
+    const count = await client.incr(redisKey);
+    if (count === 1) {
+      await client.expire(redisKey, windowSec);
+    }
+
+    if (count > config.limit) {
+      return { allowed: false, remaining: 0, resetMs: config.windowMs };
+    }
+
+    return {
+      allowed: true,
+      remaining: config.limit - count,
+      resetMs: config.windowMs,
+    };
+  } catch {
+    // Redis failure: fall back to memory
+    return checkMemoryRateLimit(key, config);
+  }
+}
+
 /**
- * Check if a request is allowed under the rate limit.
- * @param key - Unique identifier (e.g., userId, IP + route)
- * @param config - Rate limit configuration
+ * Check rate limit synchronously using in-memory store.
+ * Kept for backwards compatibility with existing sync callers.
  */
 export function checkRateLimit(
   key: string,
   config: RateLimitConfig,
 ): RateLimitResult {
-  const now = Date.now();
-  const entry = store.get(key) ?? { timestamps: [] };
+  return checkMemoryRateLimit(key, config);
+}
 
-  // Remove expired timestamps
-  entry.timestamps = entry.timestamps.filter(
-    (t) => now - t < config.windowMs,
-  );
-
-  if (entry.timestamps.length >= config.limit) {
-    const oldest = entry.timestamps[0];
-    return {
-      allowed: false,
-      remaining: 0,
-      resetMs: oldest + config.windowMs - now,
-    };
+/**
+ * Check rate limit asynchronously. Uses Redis when UPSTASH_REDIS_REST_URL
+ * and UPSTASH_REDIS_REST_TOKEN are configured, falls back to in-memory otherwise.
+ */
+export async function checkRateLimitAsync(
+  key: string,
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  const client = getRedis();
+  if (client) {
+    return checkRedisRateLimit(client, key, config);
   }
-
-  entry.timestamps.push(now);
-  store.set(key, entry);
-
-  return {
-    allowed: true,
-    remaining: config.limit - entry.timestamps.length,
-    resetMs: config.windowMs,
-  };
+  return checkMemoryRateLimit(key, config);
 }
 
 /** Pre-configured rate limits for common operations */

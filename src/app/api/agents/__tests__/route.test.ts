@@ -41,6 +41,7 @@ jest.mock('@/lib/sanitize', () => ({
 // Mock rate-limit
 jest.mock('@/lib/rate-limit', () => ({
   checkRateLimit: jest.fn().mockReturnValue({ allowed: true }),
+  checkRateLimitAsync: jest.fn().mockResolvedValue({ allowed: true }),
   RATE_LIMITS: { agentCreate: {} },
 }));
 
