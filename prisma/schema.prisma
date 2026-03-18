@@ -36,7 +36,9 @@ model Agent {
   status          String   @default("online")
   createdAt       DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model A2AAgent {
@@ -75,8 +77,11 @@ model Pairing {
   reasoning          String?
   round              Int     @default(0)
 
-  event        Event         @relation(fields: [eventId], references: [id])
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   dateSessions DateSession[]
+
+  @@index([eventId])
+  @@index([round])
 }
 
 model DateSession {
@@ -87,9 +92,12 @@ model DateSession {
   chatSessionId String?
   createdAt     DateTime @default(now())
 
-  pairing  Pairing   @relation(fields: [pairingId], references: [id])
+  pairing  Pairing   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
   messages Message[]
   ratings  Rating[]
+
+  @@index([pairingId])
+  @@index([status])
 }
 
 model Message {
@@ -101,7 +109,9 @@ model Message {
   turn          Int      @default(0)
   createdAt     DateTime @default(now())
 
-  dateSession DateSession @relation(fields: [dateSessionId], references: [id])
+  dateSession DateSession @relation(fields: [dateSessionId], references: [id], onDelete: Cascade)
+
+  @@index([dateSessionId])
 }
 
 model Rating {
@@ -112,5 +122,7 @@ model Rating {
   score         Float
   comment       String?
 
-  dateSession DateSession @relation(fields: [dateSessionId], references: [id])
+  dateSession DateSession @relation(fields: [dateSessionId], references: [id], onDelete: Cascade)
+
+  @@index([dateSessionId])
 }

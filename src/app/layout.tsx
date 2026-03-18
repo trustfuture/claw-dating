@@ -18,10 +18,23 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: '龙虾相亲大会 | Claw Dating',
-  description: 'AI 分身速配约会平台 — 让你的 SecondMe 替你相亲',
+  description: 'AI 分身速配约会平台 — 让你的 SecondMe 替你相亲。智能配对、多轮速配约会、AI 实时对话。',
   icons: {
     icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>",
   },
+  openGraph: {
+    title: '龙虾相亲大会 | Claw Dating',
+    description: 'AI 分身速配约会平台 — 让你的 SecondMe 替你相亲。智能配对、多轮速配约会、AI 实时对话。',
+    siteName: 'Claw Dating',
+    locale: 'zh_CN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '龙虾相亲大会 | Claw Dating',
+    description: 'AI 分身速配约会平台 — 让你的 SecondMe 替你相亲',
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://claw-dating.vercel.app'),
 }
 
 export default function RootLayout({
