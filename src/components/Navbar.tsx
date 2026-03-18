@@ -140,4 +140,5 @@ const NAV_ITEMS = [
   { href: '/lobby', label: '大厅' },
   { href: '/dates', label: '约会' },
   { href: '/scoreboard', label: '排行榜' },
+  { href: '/admin', label: '管理' },
 ]

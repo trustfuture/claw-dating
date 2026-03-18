@@ -85,6 +85,27 @@ export default function ScoreboardPage() {
   )
 }
 
+interface HistoryLeaderEntry {
+  id: string
+  name: string
+  avatarEmoji: string
+  totalDates: number
+  totalEvents: number
+  avgRatingGiven: number
+  avgRatingReceived: number
+  avgCompatibility: number
+}
+
+interface HistoryEvent {
+  id: string
+  name: string
+  phase: string
+  createdAt: string
+  participantCount: number
+  totalDates: number
+  completedDates: number
+}
+
 function ScoreboardContent() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
@@ -95,6 +116,10 @@ function ScoreboardContent() {
   const [eventName, setEventName] = useState<string>('')
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyLeaderboard, setHistoryLeaderboard] = useState<HistoryLeaderEntry[]>([])
+  const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -120,6 +145,20 @@ function ScoreboardContent() {
       return () => clearTimeout(timer)
     }
   }, [awards, matches])
+
+  // Fetch history data when toggled
+  useEffect(() => {
+    if (showHistory && !historyLoaded) {
+      fetch('/api/events/history')
+        .then((r) => r.json())
+        .then((data) => {
+          setHistoryLeaderboard(data.leaderboard || [])
+          setHistoryEvents(data.events || [])
+          setHistoryLoaded(true)
+        })
+        .catch(() => {})
+    }
+  }, [showHistory, historyLoaded])
 
   const computeResults = (evt: ScoreboardEvent) => {
     const dates = evt.dates || []
@@ -619,6 +658,112 @@ function ScoreboardContent() {
             </div>
           </section>
         )}
+
+        {/* History toggle */}
+        <section className="mt-8 sm:mt-10">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-purple transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            历史统计（跨活动）
+          </button>
+
+          {showHistory && (
+            <div className="mt-4 space-y-6">
+              {/* History events list */}
+              {historyEvents.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-secondary mb-3">历史活动</h3>
+                  <div className="space-y-2">
+                    {historyEvents.map((evt) => (
+                      <Link
+                        key={evt.id}
+                        href={`/scoreboard?eventId=${evt.id}`}
+                        className="block bg-white rounded-xl border border-[var(--border)] px-4 py-3 hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold">{evt.name}</div>
+                            <div className="text-[10px] text-muted mt-0.5">
+                              {evt.participantCount} 参与者 · {evt.completedDates}/{evt.totalDates} 场完成 · {new Date(evt.createdAt).toLocaleDateString('zh-CN')}
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            evt.phase === 'results' ? 'bg-teal/10 text-teal' : 'bg-purple/10 text-purple'
+                          }`}>
+                            {evt.phase}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cross-event leaderboard */}
+              {historyLeaderboard.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-secondary mb-3">全局排行榜</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {historyLeaderboard.map((entry, i) => (
+                      <div
+                        key={entry.id}
+                        className="bg-white rounded-2xl border border-[var(--border)] p-4 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="text-sm font-display font-bold text-muted w-6 text-center">
+                            {i + 1}
+                          </span>
+                          <span className="text-2xl">{entry.avatarEmoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold truncate">{entry.name}</div>
+                            <div className="text-[10px] text-muted">
+                              {entry.totalEvents} 场活动 · {entry.totalDates} 次约会
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <div className="text-lg font-display font-bold text-coral">{entry.avgRatingReceived || '-'}</div>
+                            <div className="text-[10px] text-muted">平均得分</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-display font-bold text-purple">{entry.avgRatingGiven || '-'}</div>
+                            <div className="text-[10px] text-muted">给出评分</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-display font-bold text-teal">
+                              {entry.avgCompatibility > 0 ? `${entry.avgCompatibility}%` : '-'}
+                            </div>
+                            <div className="text-[10px] text-muted">平均匹配</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {historyLeaderboard.length === 0 && historyLoaded && (
+                <p className="text-muted text-sm text-center py-6">暂无历史数据</p>
+              )}
+
+              {!historyLoaded && (
+                <div className="flex justify-center py-6">
+                  <div className="animate-spin w-6 h-6 border-2 border-purple/20 border-t-purple rounded-full" />
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )

@@ -55,6 +55,15 @@ export async function POST(
     );
   }
 
+  if (dateSession.status === "cancelled") {
+    return NextResponse.json(
+      { error: "约会已取消，无法重新开始" },
+      { status: 400 },
+    );
+  }
+
+  // Allow retrying error/failed status dates (status is "pending", "error", or "failed")
+
   // Use streaming response to send progress updates
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

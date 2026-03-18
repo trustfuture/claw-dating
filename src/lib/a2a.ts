@@ -1,12 +1,31 @@
 /**
  * A2A (Agent-to-Agent) protocol utilities.
  *
- * Handles fetching and parsing Agent Cards from external A2A-compatible agents.
+ * Handles fetching and parsing Agent Cards from external A2A-compatible agents,
+ * and sending/receiving messages via the A2A protocol.
  */
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+export interface A2AMessagePayload {
+  jsonrpc: "2.0";
+  method: "message/send";
+  id: string;
+  params: {
+    message: {
+      role: "user";
+      parts: { type: "text"; text: string }[];
+    };
+    sessionId?: string;
+  };
+}
+
+export interface A2AMessageResponse {
+  text: string;
+  sessionId: string | null;
+}
 
 export interface AgentCardMetadata {
   personalityType: string;
@@ -214,4 +233,145 @@ export function parseAgentCardMetadata(
     avatarEmoji: getString("avatar_emoji", 10) || "\uD83E\uDD9E",
     nameCn: getString("name_cn", 50),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Send A2A Message
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a message to an external A2A agent via the JSON-RPC protocol.
+ *
+ * Posts to `{agentUrl}/a2a` with a `message/send` JSON-RPC request.
+ * Extracts the text response from the result.
+ */
+export async function sendA2AMessage(
+  agentUrl: string,
+  message: string,
+  sessionId?: string,
+): Promise<A2AMessageResponse> {
+  const normalizedUrl = validateAgentUrl(agentUrl);
+  if (!normalizedUrl) {
+    throw new Error("Invalid A2A agent URL");
+  }
+
+  const a2aEndpoint = `${normalizedUrl}/a2a`;
+  const requestId = `claw-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const payload: A2AMessagePayload = {
+    jsonrpc: "2.0",
+    method: "message/send",
+    id: requestId,
+    params: {
+      message: {
+        role: "user",
+        parts: [{ type: "text", text: message }],
+      },
+      ...(sessionId ? { sessionId } : {}),
+    },
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(a2aEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("A2A agent 响应超时（60秒）");
+    }
+    throw new Error(
+      `无法连接到 A2A agent (${normalizedUrl}): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `A2A agent 返回 HTTP ${response.status}: ${body.slice(0, 200)}`,
+    );
+  }
+
+  let result: Record<string, unknown>;
+  try {
+    result = (await response.json()) as Record<string, unknown>;
+  } catch {
+    throw new Error("A2A agent 返回了无效的 JSON 响应");
+  }
+
+  // Handle JSON-RPC error
+  if (result.error) {
+    const err = result.error as Record<string, unknown>;
+    throw new Error(
+      `A2A agent 错误: ${err.message || JSON.stringify(err)}`,
+    );
+  }
+
+  // Extract text from JSON-RPC result
+  const rpcResult = result.result as Record<string, unknown> | undefined;
+  if (!rpcResult) {
+    throw new Error("A2A agent 返回了空结果");
+  }
+
+  // The A2A protocol returns artifacts or parts in the result
+  let text = "";
+  let responseSessionId: string | null = null;
+
+  // Try to extract sessionId from metadata
+  const metadata = rpcResult.metadata as Record<string, unknown> | undefined;
+  if (metadata?.sessionId && typeof metadata.sessionId === "string") {
+    responseSessionId = metadata.sessionId;
+  }
+
+  // Extract text from result.message.parts or result.artifacts
+  const msg = rpcResult.message as Record<string, unknown> | undefined;
+  if (msg?.parts && Array.isArray(msg.parts)) {
+    for (const part of msg.parts) {
+      if (part && typeof part === "object" && "text" in part && typeof part.text === "string") {
+        text += part.text;
+      }
+    }
+  }
+
+  // Fallback: try artifacts array
+  if (!text) {
+    const artifacts = rpcResult.artifacts as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(artifacts)) {
+      for (const artifact of artifacts) {
+        const parts = artifact.parts as Array<Record<string, unknown>> | undefined;
+        if (Array.isArray(parts)) {
+          for (const part of parts) {
+            if (typeof part.text === "string") {
+              text += part.text;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Last resort: try result.text directly
+  if (!text && typeof rpcResult.text === "string") {
+    text = rpcResult.text;
+  }
+
+  if (!text) {
+    throw new Error("A2A agent 返回了空消息");
+  }
+
+  // Extract sessionId from task or metadata
+  if (!responseSessionId) {
+    const task = rpcResult as Record<string, unknown>;
+    if (typeof task.sessionId === "string") {
+      responseSessionId = task.sessionId;
+    }
+  }
+
+  return { text, sessionId: responseSessionId };
 }

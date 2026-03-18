@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { sendChatMessage, reportAgentMemory } from "@/lib/secondme";
+import { sendA2AMessage } from "@/lib/a2a";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,14 +82,95 @@ async function updateEventPhaseIfFinished(eventId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Agent channel abstraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents a resolved agent with its messaging channel info.
+ * Either SecondMe (has token) or A2A (has a2aUrl).
+ */
+interface ResolvedAgent {
+  id: string;
+  name: string;
+  personalityType: string;
+  channel: "secondme" | "a2a";
+  token?: string;      // SecondMe access token
+  a2aUrl?: string;     // A2A endpoint URL
+}
+
+/**
+ * Resolve an agent from the database, determining whether it's a SecondMe or A2A agent.
+ */
+async function resolveAgent(agentId: string): Promise<ResolvedAgent> {
+  // Try SecondMe agent first
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    include: { user: true },
+  });
+
+  if (agent) {
+    return {
+      id: agent.id,
+      name: agent.name,
+      personalityType: agent.personalityType,
+      channel: "secondme",
+      token: agent.user.accessToken ?? undefined,
+    };
+  }
+
+  // Try A2A agent
+  const a2aAgent = await prisma.a2AAgent.findUnique({
+    where: { id: agentId },
+  });
+
+  if (a2aAgent) {
+    return {
+      id: a2aAgent.id,
+      name: a2aAgent.name,
+      personalityType: a2aAgent.personalityType,
+      channel: "a2a",
+      a2aUrl: a2aAgent.url,
+    };
+  }
+
+  throw new Error(`Agent ${agentId} not found`);
+}
+
+/**
+ * Send a message to an agent via its appropriate channel.
+ */
+async function sendMessageToAgent(
+  agent: ResolvedAgent,
+  message: string,
+  sessionId?: string,
+): Promise<{ text: string; sessionId: string | null }> {
+  if (agent.channel === "secondme") {
+    if (!agent.token) {
+      throw new Error(`${agent.name} 的 SecondMe 未授权，请重新登录`);
+    }
+    return sendChatMessage(agent.token, message, sessionId);
+  }
+
+  if (agent.channel === "a2a") {
+    if (!agent.a2aUrl) {
+      throw new Error(`${agent.name} 的 A2A URL 未配置`);
+    }
+    return sendA2AMessage(agent.a2aUrl, message, sessionId);
+  }
+
+  throw new Error(`Unknown agent channel: ${agent.channel}`);
+}
+
+// ---------------------------------------------------------------------------
 // Main engine
 // ---------------------------------------------------------------------------
 
 /**
- * Orchestrate a full date conversation between two SecondMe-backed agents.
+ * Orchestrate a full date conversation between two agents.
+ * Supports SecondMe agents, A2A agents, and mixed pairings.
  *
  * Flow:
- *  1. Load pairing and both agents (with their owners' SecondMe tokens)
+ *  1. Load pairing and resolve both agents (SecondMe or A2A)
  *  2. Run 5 turns of alternating conversation (10 messages total)
  *  3. Ask each agent to rate the other
  *  4. Persist everything to the database
@@ -97,7 +179,7 @@ export async function runDate(
   dateSessionId: string,
   options: RunDateOptions = {},
 ): Promise<DateResult> {
-  // --- Load existing date session + pairing + agents + users -----------------
+  // --- Load existing date session + pairing -----------------
   const existingSession = await prisma.dateSession.findUniqueOrThrow({
     where: { id: dateSessionId },
     include: { pairing: true },
@@ -105,15 +187,10 @@ export async function runDate(
 
   const pairing = existingSession.pairing;
 
+  // Resolve agents (supports both SecondMe and A2A)
   const [agentA, agentB] = await Promise.all([
-    prisma.agent.findUniqueOrThrow({
-      where: { id: pairing.agentAId },
-      include: { user: true },
-    }),
-    prisma.agent.findUniqueOrThrow({
-      where: { id: pairing.agentBId },
-      include: { user: true },
-    }),
+    resolveAgent(pairing.agentAId),
+    resolveAgent(pairing.agentBId),
   ]);
 
   const dateSession = await prisma.$transaction(async (tx) => {
@@ -135,23 +212,15 @@ export async function runDate(
   const messages: DateMessage[] = [];
   const errors: string[] = [];
 
-  // Chat session IDs for context continuity within each agent's SecondMe
+  // Chat session IDs for context continuity
   let sessionIdA: string | null = null;
   let sessionIdB: string | null = null;
 
   try {
-    const tokenA = agentA.user.accessToken;
-    const tokenB = agentB.user.accessToken;
-
-    if (!tokenA || !tokenB) {
-      const missing = !tokenA ? agentA.name : agentB.name;
-      throw new Error(`${missing} 的 SecondMe 未授权，请重新登录`);
-    }
-
     // --- Turn 1: Agent A introduces themselves --------------------------------
     const introPrompt = `You're at the 龙虾相亲大会 (Lobster Dating Party)! You've been matched with ${agentB.name}. Please introduce yourself in a fun and charming way. Keep it concise (2-3 sentences).`;
 
-    const introResult = await sendChatMessage(tokenA, introPrompt, sessionIdA ?? undefined);
+    const introResult = await sendMessageToAgent(agentA, introPrompt, sessionIdA ?? undefined);
     sessionIdA = introResult.sessionId ?? sessionIdA;
 
     const firstMsg: DateMessage = {
@@ -179,14 +248,13 @@ export async function runDate(
 
     for (let turn = 2; turn <= turnsPerAgent * 2; turn++) {
       const isAgentATurn = turn % 2 === 1; // odd turns = A, even turns = B
-      const currentToken = isAgentATurn ? tokenA : tokenB;
       const currentAgent = isAgentATurn ? agentA : agentB;
       const currentSessionId = isAgentATurn ? sessionIdA : sessionIdB;
 
       const prompt = `${lastSenderName} says: "${lastMessage}"\n\nPlease respond naturally. Keep it concise (2-3 sentences).`;
 
-      const result = await sendChatMessage(
-        currentToken,
+      const result = await sendMessageToAgent(
+        currentAgent,
         prompt,
         currentSessionId ?? undefined,
       );
@@ -224,8 +292,8 @@ export async function runDate(
       `The date with ${otherName} is over! Please rate your experience on a scale of 1 to 10. Reply in EXACTLY this format:\nSCORE: <number>\nCOMMENT: <your thoughts about the date>`;
 
     const [ratingResultA, ratingResultB] = await Promise.all([
-      sendChatMessage(tokenA, ratingPrompt(agentB.name), sessionIdA ?? undefined),
-      sendChatMessage(tokenB, ratingPrompt(agentA.name), sessionIdB ?? undefined),
+      sendMessageToAgent(agentA, ratingPrompt(agentB.name), sessionIdA ?? undefined),
+      sendMessageToAgent(agentB, ratingPrompt(agentA.name), sessionIdB ?? undefined),
     ]);
 
     const parsedA = parseRating(ratingResultA.text);
@@ -246,7 +314,7 @@ export async function runDate(
       },
     ];
 
-    // --- Persist messages and ratings -----------------------------------------
+    // --- Persist ratings -----------------------------------------
     await prisma.$transaction([
       ...ratings.map((r) =>
         prisma.rating.create({
@@ -268,17 +336,32 @@ export async function runDate(
 
     await updateEventPhaseIfFinished(pairing.eventId);
 
-    // --- Report dating memory back to SecondMe (non-blocking) ----------------
-    reportDateMemories({
-      agentA: { id: agentA.id, name: agentA.name, personalityType: agentA.personalityType, token: tokenA },
-      agentB: { id: agentB.id, name: agentB.name, personalityType: agentB.personalityType, token: tokenB },
-      messages,
-      ratings,
-      compatibilityScore: pairing.compatibilityScore,
-      dateSessionId: dateSession.id,
-    }).catch((err) => {
-      console.error("[memory-report] Failed to report date memories:", err);
-    });
+    // --- Report dating memory back to SecondMe (non-blocking, only for SecondMe agents) ---
+    const memoryAgents: { self: MemoryAgent; partner: MemoryAgent }[] = [];
+    if (agentA.channel === "secondme" && agentA.token) {
+      memoryAgents.push({
+        self: { id: agentA.id, name: agentA.name, personalityType: agentA.personalityType, token: agentA.token },
+        partner: { id: agentB.id, name: agentB.name, personalityType: agentB.personalityType, token: "" },
+      });
+    }
+    if (agentB.channel === "secondme" && agentB.token) {
+      memoryAgents.push({
+        self: { id: agentB.id, name: agentB.name, personalityType: agentB.personalityType, token: agentB.token },
+        partner: { id: agentA.id, name: agentA.name, personalityType: agentA.personalityType, token: "" },
+      });
+    }
+
+    if (memoryAgents.length > 0) {
+      reportDateMemoriesSelective({
+        agents: memoryAgents,
+        messages,
+        ratings,
+        compatibilityScore: pairing.compatibilityScore,
+        dateSessionId: dateSession.id,
+      }).catch((err) => {
+        console.error("[memory-report] Failed to report date memories:", err);
+      });
+    }
 
     return {
       dateSessionId: dateSession.id,
@@ -293,8 +376,8 @@ export async function runDate(
     let errorMessage = rawMessage;
     if (rawMessage.includes("超时")) {
       errorMessage = turn > 0
-        ? `在第 ${turn} 轮对话时 SecondMe 响应超时`
-        : "SecondMe 响应超时，请稍后重试";
+        ? `在第 ${turn} 轮对话时响应超时`
+        : "Agent 响应超时，请稍后重试";
     } else if (rawMessage.includes("fetch") || rawMessage.includes("network") || rawMessage.includes("ECONNREFUSED")) {
       errorMessage = turn > 0
         ? `在第 ${turn} 轮对话时网络中断`
@@ -415,6 +498,44 @@ async function reportDateMemories(
     reportOne(agentA, agentB),
     reportOne(agentB, agentA),
   ]);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("[memory-report] Individual report failed:", result.reason);
+    }
+  }
+}
+
+/**
+ * Selective memory reporting — only for SecondMe agents that have tokens.
+ * Used when a date involves A2A agents that don't support SecondMe memory.
+ */
+interface SelectiveMemoryInput {
+  agents: { self: MemoryAgent; partner: MemoryAgent }[];
+  messages: DateMessage[];
+  ratings: AgentRating[];
+  compatibilityScore: number | null;
+  dateSessionId: string;
+}
+
+async function reportDateMemoriesSelective(
+  input: SelectiveMemoryInput,
+): Promise<void> {
+  const { agents, messages, ratings, compatibilityScore, dateSessionId } = input;
+
+  const results = await Promise.allSettled(
+    agents.map(async ({ self, partner }) => {
+      const summary = buildMemorySummary(self, partner, messages, ratings, compatibilityScore);
+      await reportAgentMemory(self.token, {
+        source: "claw-dating",
+        type: "dating_experience",
+        dateSessionId,
+        partnerName: partner.name,
+        partnerPersonalityType: partner.personalityType,
+        content: summary,
+      });
+    }),
+  );
 
   for (const result of results) {
     if (result.status === "rejected") {
