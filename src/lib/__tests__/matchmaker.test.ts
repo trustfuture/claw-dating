@@ -133,4 +133,28 @@ describe('createPairings', () => {
       nonComplementary[0].compatibilityScore,
     );
   });
+
+  it('handles agents with empty interests', () => {
+    const agents = [
+      agent('1', 'Alice', [], 'gentle'),
+      agent('2', 'Bob', [], 'adventurous'),
+    ];
+
+    const result = createPairings(agents);
+    expect(result).toHaveLength(1);
+    expect(result[0].compatibilityScore).toBeGreaterThanOrEqual(0);
+    expect(result[0].compatibilityScore).toBeLessThanOrEqual(100);
+    expect(result[0].reasoning).toBeTruthy();
+  });
+});
+
+describe('pairKey edge cases', () => {
+  it('returns consistent key when both IDs are the same', () => {
+    expect(pairKey('x', 'x')).toBe('x:x');
+  });
+
+  it('handles numeric-like string IDs', () => {
+    expect(pairKey('10', '2')).toBe('10:2');
+    expect(pairKey('2', '10')).toBe('10:2');
+  });
 });

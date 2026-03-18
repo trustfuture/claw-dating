@@ -108,7 +108,7 @@ export default function DateDetailPage() {
     return (
       <div className="min-h-screen">
         <Navbar />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-48" />
             <div className="h-40 bg-gray-100 rounded-2xl" />
@@ -129,7 +129,7 @@ export default function DateDetailPage() {
     return (
       <div className="min-h-screen">
         <Navbar />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center">
+        <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center">
           <div className="text-5xl mb-4">😵</div>
           <p className="text-secondary mb-4">{error}</p>
           <Link href="/dates" className="text-purple text-sm font-medium hover:underline">

@@ -127,7 +127,7 @@ export default function AdminPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-2xl sm:text-3xl font-bold">管理后台</h1>
         </div>

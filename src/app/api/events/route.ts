@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getAllEventSummaries, getEventViewById, getLatestEventView } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { EVENT_LIMITS } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const totalRounds = Math.max(1, Math.min(5, Number(rawRounds) || 2));
-    const turnsPerAgent = Math.max(2, Math.min(10, Number(rawTurns) || 5));
+    const totalRounds = Math.max(EVENT_LIMITS.MIN_ROUNDS, Math.min(EVENT_LIMITS.MAX_ROUNDS, Number(rawRounds) || EVENT_LIMITS.DEFAULT_ROUNDS));
+    const turnsPerAgent = Math.max(EVENT_LIMITS.MIN_TURNS_PER_AGENT, Math.min(EVENT_LIMITS.MAX_TURNS_PER_AGENT, Number(rawTurns) || EVENT_LIMITS.DEFAULT_TURNS_PER_AGENT));
 
     const event = await prisma.event.create({
       data: {

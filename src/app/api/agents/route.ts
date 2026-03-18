@@ -6,11 +6,12 @@ import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { PAGINATION } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const pageSize = Math.min(Math.max(parseInt(url.searchParams.get('page_size') || '50'), 1), 100);
+    const pageSize = Math.min(Math.max(parseInt(url.searchParams.get('page_size') || String(PAGINATION.DEFAULT_PAGE_SIZE)), 1), PAGINATION.MAX_PAGE_SIZE);
     const cursor = url.searchParams.get('cursor');
 
     const agents = await prisma.agent.findMany({

@@ -2,21 +2,41 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "20")));
+
   // Aggregate stats across all events
   const events = await prisma.event.findMany({
+    where: {
+      phase: { in: ["results", "completed"] },
+    },
     orderBy: { createdAt: "desc" },
-    include: {
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      phase: true,
+      createdAt: true,
       pairings: {
-        include: {
+        select: {
+          agentAId: true,
+          agentBId: true,
+          compatibilityScore: true,
           dateSessions: {
-            include: {
-              ratings: true,
+            select: {
+              status: true,
+              ratings: {
+                select: {
+                  agentId: true,
+                  score: true,
+                },
+              },
             },
           },
         },

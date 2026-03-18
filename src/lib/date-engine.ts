@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendChatMessage, reportAgentMemory } from "@/lib/secondme";
 import { sendA2AMessage } from "@/lib/a2a";
+import { EVENT_LIMITS } from "@/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +40,7 @@ export interface RunDateOptions {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TURNS_PER_AGENT = 5; // 5 turns each = 10 messages total
+const DEFAULT_TURNS_PER_AGENT = EVENT_LIMITS.DEFAULT_TURNS_PER_AGENT;
 
 // ---------------------------------------------------------------------------
 // Helpers

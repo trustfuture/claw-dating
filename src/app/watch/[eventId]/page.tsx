@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, use } from 'react'
+import { useState, useEffect, useCallback, useRef, use } from 'react'
 import Link from 'next/link'
+import { POLLING } from '@/lib/constants'
 
 interface WatchDate {
   id: string
@@ -59,10 +60,23 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
       })
   }, [eventId])
 
+  const eventRef = useRef(event)
+  eventRef.current = event
+
   useEffect(() => {
     fetchEvent()
-    const interval = setInterval(fetchEvent, 5000)
-    return () => clearInterval(interval)
+    const poll = () => {
+      const phase = eventRef.current?.phase
+      if (phase === 'results' || phase === 'completed') return
+      const delay = POLLING.WATCH_POLL_INTERVAL_MS + Math.random() * POLLING.WATCH_POLL_JITTER_MS
+      timer = setTimeout(() => {
+        fetchEvent()
+        poll()
+      }, delay)
+    }
+    let timer: ReturnType<typeof setTimeout>
+    poll()
+    return () => clearTimeout(timer)
   }, [fetchEvent])
 
   if (loading) {
