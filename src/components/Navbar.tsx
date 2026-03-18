@@ -23,7 +23,7 @@ export function Navbar() {
 
           {/* Desktop nav */}
           <nav aria-label="主导航" className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
+            {NAV_ITEMS.filter(item => !item.adminOnly || user?.role === 'admin').map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -112,7 +112,7 @@ export function Navbar() {
       {menuOpen && (
         <div className="md:hidden border-t border-[var(--border)] bg-white/95 backdrop-blur-xl animate-slide-in">
           <nav className="px-4 py-3 space-y-1">
-            {NAV_ITEMS.map((item) => (
+            {NAV_ITEMS.filter(item => !item.adminOnly || user?.role === 'admin').map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -157,5 +157,5 @@ const NAV_ITEMS = [
   { href: '/lobby', label: '大厅' },
   { href: '/dates', label: '约会' },
   { href: '/scoreboard', label: '排行榜' },
-  { href: '/admin', label: '管理' },
+  { href: '/admin', label: '管理', adminOnly: true },
 ]

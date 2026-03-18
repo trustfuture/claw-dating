@@ -1,6 +1,7 @@
 'use client'
 
 import { memo } from 'react'
+import { AgentProfileStats } from './AgentProfileStats'
 
 interface AgentCardProps {
   agent: {
@@ -14,11 +15,12 @@ interface AgentCardProps {
     user: { name: string; avatarUrl: string }
   }
   isMe?: boolean
+  stats?: { totalDates: number; avgRating: number }
   onEdit?: () => void
   onDelete?: () => void
 }
 
-export const AgentCard = memo(function AgentCard({ agent, isMe, onEdit, onDelete }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, onDelete }: AgentCardProps) {
   return (
     <div
       className={`
@@ -72,6 +74,10 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, onEdit, onDelete
             </span>
           )}
         </div>
+      )}
+
+      {stats && stats.totalDates > 0 && (
+        <AgentProfileStats totalDates={stats.totalDates} avgRating={stats.avgRating} />
       )}
 
       {/* Edit / Delete buttons for own agent */}

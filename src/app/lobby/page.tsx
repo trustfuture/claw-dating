@@ -41,6 +41,7 @@ export default function LobbyPage() {
   const [starting, setStarting] = useState(false)
   const [agentsLoading, setAgentsLoading] = useState(true)
   const [agentsError, setAgentsError] = useState(false)
+  const [agentStats, setAgentStats] = useState<Record<string, { totalDates: number; avgRating: number }>>({})
 
   // Search, filter, sort state
   const [search, setSearch] = useState('')
@@ -104,11 +105,19 @@ export default function LobbyPage() {
       .catch((err) => console.warn('fetchEventHistory failed:', err))
   }, [])
 
+  const fetchAgentStats = useCallback(() => {
+    fetch('/api/agents/stats')
+      .then((r) => r.json())
+      .then((data) => setAgentStats(data.stats || {}))
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     fetchAgents()
+    fetchAgentStats()
     fetchEvent()
     fetchEventHistory()
-  }, [fetchAgents, fetchEvent, fetchEventHistory])
+  }, [fetchAgents, fetchAgentStats, fetchEvent, fetchEventHistory])
 
   const createNewEvent = async () => {
     setCreatingNewEvent(true)
@@ -464,6 +473,7 @@ export default function LobbyPage() {
                     key={a.id}
                     agent={a}
                     isMe={a.id === agent?.id}
+                    stats={agentStats[a.id]}
                     onEdit={a.id === agent?.id ? () => setEditingAgent(true) : undefined}
                     onDelete={a.id === agent?.id ? () => setShowDeleteConfirm(true) : undefined}
                   />

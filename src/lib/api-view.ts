@@ -22,6 +22,7 @@ type AuthUserRecord = {
   email: string | null;
   avatarUrl: string | null;
   route: string | null;
+  role: string;
   createdAt: Date;
   updatedAt: Date;
   agents: AgentRecord[];
@@ -131,6 +132,7 @@ export function serializeAuthPayload(user: AuthUserRecord) {
       email: user.email ?? "",
       avatarUrl: user.avatarUrl ?? "",
       route: user.route ?? "",
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },

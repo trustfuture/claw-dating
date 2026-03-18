@@ -41,6 +41,7 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
   const [event, setEvent] = useState<WatchEvent | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const fetchEvent = useCallback(() => {
     fetch(`/api/events/${eventId}`)
@@ -104,6 +105,10 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
 
   const completedCount = event.dates.filter((d) => d.status === 'completed').length
   const inProgressCount = event.dates.filter((d) => d.status === 'in_progress').length
+  const dates = event.dates
+  const filteredDates = statusFilter === 'all'
+    ? dates
+    : dates.filter(d => d.status === statusFilter)
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
@@ -136,9 +141,27 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
           </div>
         </div>
 
+        {/* Status filter */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {['all', 'pending', 'in_progress', 'completed', 'error'].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                statusFilter === s
+                  ? 'bg-purple text-white'
+                  : 'bg-[var(--bg-elevated)] text-secondary hover:bg-purple/10'
+              }`}
+            >
+              {s === 'all' ? '全部' : s === 'pending' ? '等待中' : s === 'in_progress' ? '进行中' : s === 'completed' ? '已完成' : '失败'}
+            </button>
+          ))}
+          <span className="flex items-center text-xs text-muted ml-2">{filteredDates.length}/{dates.length}</span>
+        </div>
+
         {/* Date cards */}
         <div className="space-y-4 sm:space-y-6">
-          {event.dates.map((date) => (
+          {filteredDates.map((date) => (
             <WatchDateCard key={date.id} date={date} />
           ))}
         </div>

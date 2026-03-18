@@ -15,6 +15,7 @@ interface User {
   email: string
   avatarUrl: string
   route: string
+  role: string
 }
 
 interface Agent {

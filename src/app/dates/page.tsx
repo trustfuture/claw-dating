@@ -303,10 +303,22 @@ export default function DatesPage() {
         }
 
         if (event.type === 'rating') {
-          patchDate(dateId, (date) => ({
-            ...date,
-            ratings: event.data.ratings || [],
-          }))
+          patchDate(dateId, (date) => {
+            const ratings = event.data.ratings || []
+            for (const r of ratings) {
+              if (r.score >= 8) {
+                notify('高分约会!', {
+                  body: `${date.pairing.agentA.name} 和 ${date.pairing.agentB.name} 获得 ${r.score} 分`,
+                  icon: '/favicon.ico',
+                })
+                break
+              }
+            }
+            return {
+              ...date,
+              ratings,
+            }
+          })
           return
         }
 
@@ -321,6 +333,23 @@ export default function DatesPage() {
               status: 'completed',
               errorMessage: '',
             }
+          })
+          setDates((prev) => {
+            const updated = prev.map((d) => d.id === dateId ? { ...d, status: 'completed' } : d)
+            const round = updated.find((d) => d.id === dateId)?.round
+            if (round !== undefined) {
+              const roundDates = updated.filter((d) => d.round === round)
+              const allDone = roundDates.every(
+                (d) => d.status === 'completed' || d.status === 'error' || d.status === 'failed' || d.status === 'cancelled'
+              )
+              if (allDone) {
+                notify('本轮约会已全部完成', {
+                  body: '本轮约会已全部完成',
+                  icon: '/favicon.ico',
+                })
+              }
+            }
+            return prev
           })
           return
         }

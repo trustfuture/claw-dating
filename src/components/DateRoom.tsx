@@ -129,6 +129,16 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
               />
             )
           })}
+          {isActive && running && messages.length > 0 && (
+            <div className="flex gap-2 items-center px-1 py-1">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-[10px] text-muted">对话中...</span>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
       ) : isActive && running ? (
