@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { AgentCard } from '@/components/AgentCard'
 import { CreateAgentForm } from '@/components/CreateAgentForm'
 import { useToast } from '@/components/Toast'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { AgentSearchFilter } from '@/components/AgentSearchFilter'
+import { EventHistory, type EventHistoryItem } from '@/components/EventHistory'
+import { EventControls } from '@/components/EventControls'
 
 interface AgentData {
   id: string
@@ -25,17 +29,6 @@ interface EventSummary {
   id: string
   phase: string
   dates: Array<{ id: string }>
-}
-
-interface EventHistoryItem {
-  id: string
-  name: string
-  phase: string
-  currentRound: number
-  totalRounds: number
-  createdAt: string
-  participantCount: number
-  dateCount: number
 }
 
 export default function LobbyPage() {
@@ -72,11 +65,6 @@ export default function LobbyPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetting, setResetting] = useState(false)
   const { addToast } = useToast()
-
-  // Refs for modal cancel buttons (autoFocus)
-  const confirmCancelRef = useRef<HTMLButtonElement>(null)
-  const deleteCancelRef = useRef<HTMLButtonElement>(null)
-  const resetCancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -294,25 +282,12 @@ export default function LobbyPage() {
   }
 
   const hasStartedEvent = (event?.dates?.length ?? 0) > 0
-  const primaryAction = hasStartedEvent
-    ? event?.phase === 'results'
-      ? {
-          href: '/scoreboard',
-          label: '查看排行榜',
-          className: 'from-gold to-[#c49236] shadow-gold/20 hover:shadow-gold/30',
-        }
-      : {
-          href: '/dates',
-          label: '进入约会现场',
-          className: 'from-teal to-[#1f8f8c] shadow-teal/20 hover:shadow-teal/30',
-        }
-    : null
 
   return (
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* A2A Agent Registration */}
         <A2ARegisterSection onRegistered={fetchAgents} />
 
@@ -377,153 +352,30 @@ export default function LobbyPage() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              {/* Round & turns selectors - only show when can start */}
-              {agent && agents.length >= 2 && !hasStartedEvent && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-secondary whitespace-nowrap">轮数</span>
-                    <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
-                      {[1, 2, 3].map((n) => (
-                        <button
-                          key={n}
-                          onClick={() => setTotalRounds(n)}
-                          className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                            totalRounds === n
-                              ? 'bg-purple text-white'
-                              : 'bg-white text-secondary hover:bg-purple/5'
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-secondary whitespace-nowrap">对话轮</span>
-                    <div className="flex rounded-xl border border-[var(--border)] overflow-hidden">
-                      {[3, 5, 8].map((n) => (
-                        <button
-                          key={n}
-                          onClick={() => setTurnsPerAgent(n)}
-                          className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                            turnsPerAgent === n
-                              ? 'bg-purple text-white'
-                              : 'bg-white text-secondary hover:bg-purple/5'
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {agent && agents.length >= 2 && !hasStartedEvent && (
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  disabled={starting}
-                  className="
-                    w-full sm:w-auto
-                    px-8 py-3 rounded-2xl font-semibold text-white
-                    bg-gradient-to-r from-coral to-[#c43a2f]
-                    shadow-lg shadow-coral/25 hover:shadow-xl hover:shadow-coral/30
-                    hover:-translate-y-0.5 active:translate-y-0
-                    transition-all duration-200 disabled:opacity-50
-                  "
-                >
-                  {starting ? '配对中...' : '开始相亲大会'}
-                </button>
-              )}
-              {agent && event?.phase === 'dating' && (
-                <button
-                  onClick={() => setShowResetConfirm(true)}
-                  className="
-                    w-full sm:w-auto
-                    px-4 py-2.5 rounded-xl text-xs font-semibold
-                    border border-[var(--border)] text-secondary
-                    hover:bg-[var(--bg-elevated)] transition-colors
-                  "
-                >
-                  重置活动
-                </button>
-              )}
-              {agent && agents.length >= 2 && primaryAction && (
-                <a
-                  href={primaryAction.href}
-                  className={`
-                    w-full sm:w-auto text-center
-                    px-8 py-3 rounded-2xl font-semibold text-white
-                    bg-gradient-to-r ${primaryAction.className}
-                    shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0
-                    transition-all duration-200
-                  `}
-                >
-                  {primaryAction.label}
-                </a>
-              )}
-            </div>
+            <EventControls
+              agent={!!agent}
+              agentCount={agents.length}
+              hasStartedEvent={hasStartedEvent}
+              event={event}
+              totalRounds={totalRounds}
+              setTotalRounds={setTotalRounds}
+              turnsPerAgent={turnsPerAgent}
+              setTurnsPerAgent={setTurnsPerAgent}
+              starting={starting}
+              onStartClick={() => setShowConfirm(true)}
+              onResetClick={() => setShowResetConfirm(true)}
+            />
           </div>
 
-          {/* Search & Filters */}
-          <div className="space-y-3 mb-4 sm:mb-6">
-            {/* Search bar */}
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索 Agent（名字、性格、兴趣...）"
-                aria-label="搜索 Agent"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple/30 transition-all"
-              />
-            </div>
-
-            {/* Filter chips + sort */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              {personalityTypes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 flex-1">
-                  {personalityTypes.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => togglePersonality(type)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        activePersonalities.has(type)
-                          ? 'bg-purple text-white'
-                          : 'bg-[var(--bg-elevated)] text-secondary hover:bg-purple/10'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                aria-label="排序方式"
-                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-white text-xs text-secondary focus:outline-none focus:ring-2 focus:ring-purple/20 sm:ml-auto flex-shrink-0"
-              >
-                <option value="newest">最新加入</option>
-                <option value="name">名字</option>
-              </select>
-            </div>
-          </div>
+          <AgentSearchFilter
+            search={search}
+            onSearchChange={setSearch}
+            personalityTypes={personalityTypes}
+            activePersonalities={activePersonalities}
+            onTogglePersonality={togglePersonality}
+            sortMode={sortMode}
+            onSortChange={setSortMode}
+          />
 
           {/* Content: Loading / Error / Empty / Grid */}
           {agentsLoading ? (
@@ -627,176 +479,56 @@ export default function LobbyPage() {
           </section>
         )}
 
-        {/* Event History */}
-        {eventHistory.length > 1 && (
-          <section className="mt-8 sm:mt-10">
-            <h2 className="font-display text-xl sm:text-2xl font-bold mb-4">活动历史</h2>
-            <div className="space-y-3">
-              {eventHistory
-                .filter((e) => e.id !== event?.id)
-                .map((evt) => {
-                  const phaseLabel: Record<string, string> = {
-                    registration: '报名中',
-                    dating: '约会中',
-                    results: '已结束',
-                    completed: '已结束',
-                  }
-                  const date = new Date(evt.createdAt)
-                  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
-                  return (
-                    <a
-                      key={evt.id}
-                      href={`/scoreboard?eventId=${evt.id}`}
-                      className="block bg-white rounded-xl border border-[var(--border)] px-4 sm:px-5 py-3 sm:py-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-bold truncate">{evt.name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              evt.phase === 'results' || evt.phase === 'completed'
-                                ? 'bg-green-100 text-green-700'
-                                : evt.phase === 'dating'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {phaseLabel[evt.phase] || evt.phase}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted">
-                            <span>{dateStr}</span>
-                            <span>{evt.participantCount} 位嘉宾</span>
-                            <span>{evt.dateCount} 场约会</span>
-                            {evt.totalRounds > 0 && <span>{evt.totalRounds} 轮</span>}
-                          </div>
-                        </div>
-                        <svg className="w-4 h-4 text-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </a>
-                  )
-                })}
-            </div>
-          </section>
-        )}
+        <EventHistory eventHistory={eventHistory} currentEventId={event?.id} />
       </main>
 
       {/* Start Event Confirm Dialog */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onKeyDown={(e) => e.key === 'Escape' && setShowConfirm(false)}>
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowConfirm(false)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
-            <div className="text-center">
-              <div className="text-4xl mb-3">🦞</div>
-              <h3 id="confirm-title" className="font-display text-lg font-bold mb-2">确定要开始吗？</h3>
-              <p className="text-secondary text-sm mb-6">
-                开始后不能再注册新 Agent。本次活动将进行 {totalRounds} 轮约会，每场约会 {turnsPerAgent * 2} 条消息。
-              </p>
-              {agents.length % 2 === 1 && (
-                <p className="text-amber-600 text-xs mt-2 bg-amber-50 rounded-lg px-3 py-2">
-                  当前有 {agents.length} 位嘉宾（奇数），将有一位嘉宾本轮轮空
-                </p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  ref={confirmCancelRef}
-                  autoFocus
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={startEvent}
-                  disabled={starting}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-coral to-[#c43a2f] shadow-md shadow-coral/20 disabled:opacity-50 transition-all"
-                >
-                  {starting ? '配对中...' : '确定开始'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={startEvent}
+        confirming={starting}
+        icon="🦞"
+        titleId="confirm-title"
+        title="确定要开始吗？"
+        description={`开始后不能再注册新 Agent。本次活动将进行 ${totalRounds} 轮约会，每场约会 ${turnsPerAgent * 2} 条消息。`}
+        confirmLabel="确定开始"
+        confirmingLabel="配对中..."
+      >
+        {agents.length % 2 === 1 && (
+          <p className="text-amber-600 text-xs mt-2 bg-amber-50 rounded-lg px-3 py-2">
+            当前有 {agents.length} 位嘉宾（奇数），将有一位嘉宾本轮轮空
+          </p>
+        )}
+      </ConfirmDialog>
 
       {/* Delete Confirm Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="delete-title" onKeyDown={(e) => e.key === 'Escape' && !deleting && setShowDeleteConfirm(false)}>
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !deleting && setShowDeleteConfirm(false)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
-            <div className="text-center">
-              <div className="text-4xl mb-3">⚠️</div>
-              <h3 id="delete-title" className="font-display text-lg font-bold mb-2">确定要删除吗？</h3>
-              <p className="text-secondary text-sm mb-6">
-                删除后你的约会人格将从大厅中移除，此操作不可撤销。
-              </p>
-              <div className="flex gap-3">
-                <button
-                  ref={deleteCancelRef}
-                  autoFocus
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleting}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors disabled:opacity-50"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleDeleteAgent}
-                  disabled={deleting}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-coral to-[#c43a2f] shadow-md shadow-coral/20 disabled:opacity-50 transition-all"
-                >
-                  {deleting ? '删除中...' : '确定删除'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAgent}
+        confirming={deleting}
+        icon="⚠️"
+        titleId="delete-title"
+        title="确定要删除吗？"
+        description="删除后你的约会人格将从大厅中移除，此操作不可撤销。"
+        confirmLabel="确定删除"
+        confirmingLabel="删除中..."
+      />
 
       {/* Reset Event Confirm Dialog */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reset-title" onKeyDown={(e) => e.key === 'Escape' && !resetting && setShowResetConfirm(false)}>
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !resetting && setShowResetConfirm(false)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
-            <div className="text-center">
-              <div className="text-4xl mb-3">🔄</div>
-              <h3 id="reset-title" className="font-display text-lg font-bold mb-2">重置活动？</h3>
-              <p className="text-secondary text-sm mb-6">
-                将清除所有约会记录和评分，活动回到报名状态。此操作不可撤销。
-              </p>
-              <div className="flex gap-3">
-                <button
-                  ref={resetCancelRef}
-                  autoFocus
-                  onClick={() => setShowResetConfirm(false)}
-                  disabled={resetting}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] text-secondary hover:bg-[var(--bg-elevated)] transition-colors disabled:opacity-50"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleResetEvent}
-                  disabled={resetting}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-coral to-[#c43a2f] shadow-md shadow-coral/20 disabled:opacity-50 transition-all"
-                >
-                  {resetting ? '重置中...' : '确定重置'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={handleResetEvent}
+        confirming={resetting}
+        icon="🔄"
+        titleId="reset-title"
+        title="重置活动？"
+        description="将清除所有约会记录和评分，活动回到报名状态。此操作不可撤销。"
+        confirmLabel="确定重置"
+        confirmingLabel="重置中..."
+      />
     </div>
   )
 }

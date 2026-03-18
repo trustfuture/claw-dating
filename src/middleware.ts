@@ -38,8 +38,9 @@ export function middleware(request: NextRequest) {
   }
 
   // Validate session shape
+  let parsed: { userId?: string; accessToken?: string; expiresAt?: number; role?: string };
   try {
-    const parsed = JSON.parse(session);
+    parsed = JSON.parse(session);
     if (!parsed.userId || !parsed.accessToken) {
       throw new Error("Invalid session");
     }
@@ -47,6 +48,21 @@ export function middleware(request: NextRequest) {
     const loginUrl = new URL("/", request.url);
     loginUrl.searchParams.set("error", "auth_required");
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Check token expiry
+  if (parsed.expiresAt && parsed.expiresAt < Math.floor(Date.now() / 1000)) {
+    const loginUrl = new URL("/", request.url);
+    loginUrl.searchParams.set("error", "auth_required");
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Admin route check
+  const isAdmin = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+  if (isAdmin && parsed.role !== "admin") {
+    const lobbyUrl = new URL("/lobby", request.url);
+    lobbyUrl.searchParams.set("error", "unauthorized");
+    return NextResponse.redirect(lobbyUrl);
   }
 
   return NextResponse.next();

@@ -116,6 +116,7 @@ function ScoreboardContent() {
   const [eventName, setEventName] = useState<string>('')
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [search, setSearch] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [historyLeaderboard, setHistoryLeaderboard] = useState<HistoryLeaderEntry[]>([])
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([])
@@ -410,8 +411,20 @@ function ScoreboardContent() {
     setAgentStats(stats.sort((a, b) => b.avgRatingReceived - a.avgRatingReceived))
   }
 
-  // Podium: top 3 matches
-  const podiumMatches = matches.slice(0, 3)
+  const q = search.trim().toLowerCase()
+  const filteredMatches = q
+    ? matches.filter((m) =>
+        m.agentA.toLowerCase().includes(q) ||
+        m.agentB.toLowerCase().includes(q) ||
+        (m.reasoning || '').toLowerCase().includes(q)
+      )
+    : matches
+  const filteredStats = q
+    ? agentStats.filter((s) => s.name.toLowerCase().includes(q))
+    : agentStats
+
+  // Podium: top 3 matches (only when not searching)
+  const podiumMatches = q ? [] : matches.slice(0, 3)
 
   const podiumConfig = [
     { gradient: 'from-yellow-50 to-yellow-100/50', border: 'border-yellow-200', label: '🥇', textColor: 'text-yellow-600' },
@@ -423,7 +436,7 @@ function ScoreboardContent() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="text-center mb-8 sm:mb-10">
           {eventId && (
             <a
@@ -488,8 +501,32 @@ function ScoreboardContent() {
           )}
         </div>
 
+        {/* Search */}
+        {matches.length > 0 && (
+          <div className="mb-6">
+            <div className="relative max-w-md mx-auto">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索嘉宾..."
+                aria-label="搜索排行榜"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple/30 transition-all"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Awards */}
-        {awards.length > 0 && (
+        {awards.length > 0 && !q && (
           <section className="mb-8 sm:mb-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {awards.map((award, i) => (
@@ -563,16 +600,22 @@ function ScoreboardContent() {
         {/* Remaining Match Results */}
         <section className="mb-8 sm:mb-10">
           <h2 className="font-display text-lg sm:text-xl font-bold mb-4">约会排名</h2>
-          {matches.length === 0 ? (
+          {filteredMatches.length === 0 ? (
             <div className="text-center py-16 text-muted">
-              <p>暂无结果，约会完成后这里会显示排名</p>
-              <Link href="/dates" className="text-purple text-sm font-medium mt-2 inline-block">
-                前往约会 &rarr;
-              </Link>
+              {q ? (
+                <p>没有找到匹配的结果</p>
+              ) : (
+                <>
+                  <p>暂无结果，约会完成后这里会显示排名</p>
+                  <Link href="/dates" className="text-purple text-sm font-medium mt-2 inline-block">
+                    前往约会 &rarr;
+                  </Link>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {matches.map((m, i) => (
+              {filteredMatches.map((m, i) => (
                 <div
                   key={i}
                   className={`bg-white rounded-xl border border-[var(--border)] px-3 sm:px-5 py-3 sm:py-4 transition-all duration-500 ${
@@ -617,11 +660,11 @@ function ScoreboardContent() {
         </section>
 
         {/* Personal Stats */}
-        {agentStats.length > 0 && (
+        {filteredStats.length > 0 && (
           <section>
             <h2 className="font-display text-lg sm:text-xl font-bold mb-4">个人数据</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {agentStats.map((stat, i) => (
+              {filteredStats.map((stat, i) => (
                 <div
                   key={stat.id || stat.name}
                   className="bg-white rounded-2xl border border-[var(--border)] p-4 sm:p-5 shadow-sm transition-all duration-500 hover:shadow-md hover:-translate-y-0.5"

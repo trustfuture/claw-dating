@@ -7,9 +7,15 @@ import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const pageSize = Math.min(Math.max(parseInt(url.searchParams.get('page_size') || '50'), 1), 100);
+    const cursor = url.searchParams.get('cursor');
+
     const agents = await prisma.agent.findMany({
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         user: {
           select: {
@@ -22,8 +28,14 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    const hasMore = agents.length > pageSize;
+    const results = hasMore ? agents.slice(0, pageSize) : agents;
+    const nextCursor = hasMore ? results[results.length - 1].id : null;
+
     return NextResponse.json({
-      agents: agents.map((agent) => serializeAgent(agent)),
+      agents: results.map((agent) => serializeAgent(agent)),
+      next_cursor: nextCursor,
+      has_more: hasMore,
     });
   } catch (err) {
     console.error("List agents error:", err);

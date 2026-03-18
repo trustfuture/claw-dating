@@ -18,6 +18,7 @@ export interface Session {
   accessToken: string;
   refreshToken: string;
   expiresAt: number; // unix timestamp in seconds
+  role?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,7 @@ export async function getSession(): Promise<
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,
+      role: session.role,
     };
     return { ...refreshed, _refreshed: true };
   } catch {

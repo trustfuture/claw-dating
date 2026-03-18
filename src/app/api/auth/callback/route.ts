@@ -61,6 +61,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Determine role
+    const adminUserIds = (process.env.ADMIN_USER_IDS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const role = adminUserIds.includes(secondmeUserId)
+      ? "admin"
+      : user.role ?? "user";
+
     // Build session and set cookie on redirect response
     const session: Session = {
       userId: user.id,
@@ -69,6 +78,7 @@ export async function GET(request: NextRequest) {
       expiresAt: tokenExpiresAt
         ? Math.floor(tokenExpiresAt.getTime() / 1000)
         : Math.floor(Date.now() / 1000) + 3600,
+      role,
     };
 
     const response = NextResponse.redirect(new URL("/lobby", request.url));

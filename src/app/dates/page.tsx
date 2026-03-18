@@ -134,6 +134,25 @@ async function consumeSse(
   }
 }
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000,
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export default function DatesPage() {
   const { user, loading } = useAuth()
   const [dates, setDates] = useState<DateData[]>([])
@@ -223,8 +242,14 @@ export default function DatesPage() {
   }, [addToast, fetchEvent, patchDate])
 
   const runDate = useCallback(async (dateId: string) => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000)
+
     try {
-      const res = await fetch(`/api/dates/${dateId}/run`, { method: 'POST' })
+      const res = await fetch(`/api/dates/${dateId}/run`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
       if (!res.ok) {
         throw new Error(await readJsonError(res))
       }
@@ -239,7 +264,7 @@ export default function DatesPage() {
         errorMessage: '',
       }))
 
-      await consumeSse(res, (event) => {
+      const handleSseEvent = (event: DateRunEvent) => {
         if (event.type === 'status') {
           patchDate(dateId, (date) => ({
             ...date,
@@ -305,6 +330,11 @@ export default function DatesPage() {
             errorMessage: event.data.message || '约会过程中出现错误',
           }))
         }
+      }
+
+      await withRetry(async () => {
+        fetchEvent()
+        await consumeSse(res, handleSseEvent)
       })
 
       fetchEvent()
@@ -317,6 +347,7 @@ export default function DatesPage() {
       }))
       addToast('error', message)
     } finally {
+      clearTimeout(timeoutId)
       clearRunningDate(dateId)
     }
   }, [addToast, clearRunningDate, fetchEvent, markDateRunning, notify, patchDate])
@@ -409,7 +440,7 @@ export default function DatesPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Error banner */}
         {showError && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-coral/10 border border-coral/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">

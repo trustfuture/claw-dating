@@ -43,8 +43,26 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var mode = localStorage.getItem('theme');
+              if (mode === 'dark' || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+              }
+            } catch(e) {}
+          })();
+        `}} />
+      </head>
       <body className={`${notoSans.variable} ${playfair.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text-primary)]`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-purple focus:text-white focus:text-sm focus:font-semibold"
+        >
+          跳转到主要内容
+        </a>
         <AuthProvider>
           <ToastProvider>
             {children}

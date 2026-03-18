@@ -18,7 +18,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero */}
-      <header className="pt-12 sm:pt-20 pb-10 sm:pb-16 px-4 sm:px-6 text-center">
+      <header id="main-content" className="pt-12 sm:pt-20 pb-10 sm:pb-16 px-4 sm:px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="text-6xl sm:text-8xl mb-4 sm:mb-6 animate-bounce-slow">🦞</div>
           <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-3 sm:mb-4">
