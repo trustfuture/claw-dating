@@ -5,12 +5,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
+import { useLocale } from '@/hooks/useLocale'
 
 export function Navbar() {
   const pathname = usePathname()
   const { user, agent, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const { toggle: toggleTheme, isDark } = useTheme()
+  const { locale, toggle: toggleLocale, t } = useLocale()
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)]">
@@ -35,7 +37,7 @@ export function Navbar() {
                   }
                 `}
               >
-                {item.label}
+                {t(item.i18nKey)}
               </Link>
             ))}
           </nav>
@@ -45,7 +47,8 @@ export function Navbar() {
           <button
             onClick={toggleTheme}
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
-            aria-label="切换深色模式"
+            aria-label={t('theme.toggle')}
+            title="切换深色模式"
           >
             {isDark ? (
               <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -56,6 +59,13 @@ export function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
               </svg>
             )}
+          </button>
+          <button
+            onClick={toggleLocale}
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors text-xs font-bold text-secondary"
+            aria-label="Switch language"
+          >
+            {locale === 'zh' ? 'EN' : '中'}
           </button>
           {user && (
             <>
@@ -80,7 +90,7 @@ export function Navbar() {
                 onClick={logout}
                 className="hidden sm:inline text-xs text-muted hover:text-secondary transition-colors min-h-0"
               >
-                退出
+                {t('nav.logout')}
               </button>
             </>
           )}
@@ -125,7 +135,7 @@ export function Navbar() {
                   }
                 `}
               >
-                {item.label}
+                {t(item.i18nKey)}
               </Link>
             ))}
           </nav>
@@ -143,7 +153,7 @@ export function Navbar() {
                 onClick={() => { logout(); setMenuOpen(false) }}
                 className="text-xs text-muted hover:text-secondary transition-colors px-3 py-2"
               >
-                退出
+                {t('nav.logout')}
               </button>
             </div>
           )}
@@ -154,8 +164,8 @@ export function Navbar() {
 }
 
 const NAV_ITEMS = [
-  { href: '/lobby', label: '大厅' },
-  { href: '/dates', label: '约会' },
-  { href: '/scoreboard', label: '排行榜' },
-  { href: '/admin', label: '管理', adminOnly: true },
+  { href: '/lobby', label: '大厅', i18nKey: 'nav.lobby' },
+  { href: '/dates', label: '约会', i18nKey: 'nav.dates' },
+  { href: '/scoreboard', label: '排行榜', i18nKey: 'nav.scoreboard' },
+  { href: '/admin', label: '管理', i18nKey: 'nav.admin', adminOnly: true },
 ]

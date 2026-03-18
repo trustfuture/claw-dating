@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { computeAchievements } from "@/lib/achievements";
 
 export async function GET() {
   try {
@@ -15,6 +16,7 @@ export async function GET() {
               select: {
                 agentAId: true,
                 agentBId: true,
+                eventId: true,
               },
             },
           },
@@ -25,7 +27,7 @@ export async function GET() {
     // Build stats: for each agent, count ratings received and compute average
     const agentStats: Record<
       string,
-      { totalRatings: number; totalScore: number; datePartners: Set<string> }
+      { totalRatings: number; totalScore: number; datePartners: Set<string>; highestRating: number; perfectScores: number; events: Set<string> }
     > = {};
 
     for (const r of ratings) {
@@ -40,24 +42,40 @@ export async function GET() {
           totalRatings: 0,
           totalScore: 0,
           datePartners: new Set(),
+          highestRating: 0,
+          perfectScores: 0,
+          events: new Set(),
         };
       }
       agentStats[partnerId].totalRatings++;
       agentStats[partnerId].totalScore += r.score;
       agentStats[partnerId].datePartners.add(r.agentName);
+      if (r.score >= 9.5) agentStats[partnerId].perfectScores++;
+      if (r.score > agentStats[partnerId].highestRating) agentStats[partnerId].highestRating = r.score;
+      agentStats[partnerId].events.add(r.dateSession.pairing.eventId);
     }
 
     const result: Record<
       string,
-      { totalDates: number; avgRating: number; bestRater?: string }
+      { totalDates: number; avgRating: number; bestRater?: string; achievements: { id: string; title: string; emoji: string }[] }
     > = {};
     for (const [id, stat] of Object.entries(agentStats)) {
+      const avgRating = stat.totalRatings > 0
+        ? Math.round((stat.totalScore / stat.totalRatings) * 10) / 10
+        : 0;
+
+      const achievements = computeAchievements({
+        totalDates: stat.totalRatings,
+        avgRatingReceived: stat.totalRatings > 0 ? stat.totalScore / stat.totalRatings : 0,
+        highestRating: stat.highestRating,
+        totalEvents: stat.events.size,
+        perfectScores: stat.perfectScores,
+      });
+
       result[id] = {
         totalDates: stat.totalRatings,
-        avgRating:
-          stat.totalRatings > 0
-            ? Math.round((stat.totalScore / stat.totalRatings) * 10) / 10
-            : 0,
+        avgRating,
+        achievements: achievements.map(a => ({ id: a.id, title: a.title, emoji: a.emoji })),
       };
     }
 

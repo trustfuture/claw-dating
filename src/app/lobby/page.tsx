@@ -41,7 +41,7 @@ export default function LobbyPage() {
   const [starting, setStarting] = useState(false)
   const [agentsLoading, setAgentsLoading] = useState(true)
   const [agentsError, setAgentsError] = useState(false)
-  const [agentStats, setAgentStats] = useState<Record<string, { totalDates: number; avgRating: number }>>({})
+  const [agentStats, setAgentStats] = useState<Record<string, { totalDates: number; avgRating: number; achievements?: { id: string; title: string; emoji: string }[] }>>({})
 
   // Search, filter, sort state
   const [search, setSearch] = useState('')

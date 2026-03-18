@@ -15,7 +15,7 @@ interface AgentCardProps {
     user: { name: string; avatarUrl: string }
   }
   isMe?: boolean
-  stats?: { totalDates: number; avgRating: number }
+  stats?: { totalDates: number; avgRating: number; achievements?: { id: string; title: string; emoji: string }[] }
   onEdit?: () => void
   onDelete?: () => void
 }
@@ -77,7 +77,7 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, o
       )}
 
       {stats && stats.totalDates > 0 && (
-        <AgentProfileStats totalDates={stats.totalDates} avgRating={stats.avgRating} />
+        <AgentProfileStats totalDates={stats.totalDates} avgRating={stats.avgRating} achievements={stats.achievements} />
       )}
 
       {/* Edit / Delete buttons for own agent */}
