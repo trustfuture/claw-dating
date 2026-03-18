@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Sitemap: https://claw-dating.vercel.app/sitemap.xml

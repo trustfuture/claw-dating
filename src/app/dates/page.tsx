@@ -537,6 +537,29 @@ export default function DatesPage() {
                 {running ? '约会中...' : `开始全部约会 (${pendingCount})`}
               </button>
             )}
+            {dates.filter(d => d.status === 'error').length > 0 && !running && (
+              <button
+                onClick={async () => {
+                  setActionPending(true)
+                  try {
+                    for (const d of dates.filter(d => d.status === 'error')) {
+                      await runDate(d.id)
+                    }
+                  } finally {
+                    setActionPending(false)
+                  }
+                }}
+                disabled={running}
+                className="
+                  w-full sm:w-auto
+                  px-6 py-2.5 rounded-xl font-semibold text-sm
+                  text-coral border border-coral/20 hover:bg-coral/5
+                  disabled:opacity-50 transition-all duration-200
+                "
+              >
+                重试失败约会 ({dates.filter(d => d.status === 'error').length})
+              </button>
+            )}
             {currentRoundAllDone && hasMoreRounds && pendingCount === 0 && (
               <button
                 onClick={startNextRound}

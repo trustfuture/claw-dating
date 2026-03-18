@@ -481,6 +481,30 @@ function ScoreboardContent() {
               >
                 {copied ? '已复制!' : '复制分享文案'}
               </button>
+              <button
+                onClick={() => {
+                  if (matches.length === 0) return
+                  const headers = ['排名', '嘉宾A', '嘉宾B', '平均分', '匹配度']
+                  const rows = matches.map((m, i) => [
+                    i + 1,
+                    m.agentA,
+                    m.agentB,
+                    m.avgScore,
+                    m.compatibilityScore ?? '',
+                  ])
+                  const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+                  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `claw-dating-${eventName || 'results'}.csv`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
+              >
+                导出 CSV
+              </button>
               {typeof navigator !== 'undefined' && navigator.share && (
                 <button
                   onClick={() => {
