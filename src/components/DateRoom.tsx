@@ -133,7 +133,7 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
                 </span>
                 <div
                   className={`
-                    max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed
+                    max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words
                     ${isA
                       ? 'bg-[var(--bg-elevated)] rounded-tl-sm'
                       : 'bg-purple/5 rounded-tr-sm'

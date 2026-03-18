@@ -1,5 +1,7 @@
 'use client'
 
+import { memo } from 'react'
+
 interface AgentCardProps {
   agent: {
     id: string
@@ -16,7 +18,7 @@ interface AgentCardProps {
   onDelete?: () => void
 }
 
-export function AgentCard({ agent, isMe, onEdit, onDelete }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent, isMe, onEdit, onDelete }: AgentCardProps) {
   return (
     <div
       className={`
@@ -95,4 +97,4 @@ export function AgentCard({ agent, isMe, onEdit, onDelete }: AgentCardProps) {
       )}
     </div>
   )
-}
+})

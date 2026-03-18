@@ -91,14 +91,14 @@ export default function LobbyPage() {
     fetch('/api/events')
       .then((r) => r.json())
       .then((data) => setEvent((data.event ?? null) as EventSummary | null))
-      .catch(() => {})
+      .catch((err) => console.warn('fetchEvent failed:', err))
   }, [])
 
   const fetchEventHistory = useCallback(() => {
     fetch('/api/events?all=true')
       .then((r) => r.json())
       .then((data) => setEventHistory(data.events || []))
-      .catch(() => {})
+      .catch((err) => console.warn('fetchEventHistory failed:', err))
   }, [])
 
   useEffect(() => {

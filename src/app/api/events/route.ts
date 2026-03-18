@@ -89,9 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clamp totalRounds to 1..3, default 1
-    const totalRounds = Math.max(1, Math.min(3, Number(rawRounds) || 1));
-    // Clamp turnsPerAgent to 2..10, default 5
+    const totalRounds = Math.max(1, Math.min(5, Number(rawRounds) || 2));
     const turnsPerAgent = Math.max(2, Math.min(10, Number(rawTurns) || 5));
 
     const event = await prisma.event.create({

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Noto_Sans_SC, Playfair_Display } from 'next/font/google'
 import { AuthProvider } from '@/components/AuthProvider'
 import { ToastProvider } from '@/components/Toast'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import './globals.css'
 
 const notoSans = Noto_Sans_SC({
@@ -65,7 +66,9 @@ export default function RootLayout({
         </a>
         <AuthProvider>
           <ToastProvider>
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </ToastProvider>
         </AuthProvider>
       </body>

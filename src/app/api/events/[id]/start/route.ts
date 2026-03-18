@@ -58,6 +58,12 @@ export async function POST(
       { status: 400 },
     );
   } catch (err) {
+    if (err instanceof Error && err.message === "PHASE_CONFLICT") {
+      return NextResponse.json(
+        { error: "活动状态已变更，请刷新后重试" },
+        { status: 409 },
+      );
+    }
     console.error("Start event error:", err);
     return NextResponse.json(
       { error: "启动活动失败，请重试" },
@@ -186,7 +192,6 @@ async function startFirstRound(
     );
   }
 
-  // Use LLM-enhanced matching when API key is available, otherwise fall back
   const pairingResults = await createPairingsWithLLM(agentsForMatching);
 
   if (pairingResults.length === 0) {
@@ -200,6 +205,11 @@ async function startFirstRound(
   const participantIds = agentsForMatching.map((agent) => agent.id);
 
   await prisma.$transaction(async (tx) => {
+    const fresh = await tx.event.findUnique({ where: { id: eventId } });
+    if (!fresh || fresh.phase !== "registration") {
+      throw new Error("PHASE_CONFLICT");
+    }
+
     await tx.event.update({
       where: { id: eventId },
       data: {
@@ -272,9 +282,15 @@ async function advanceRound(
 
   // If we've completed all rounds, move to results
   if (currentRound >= totalRounds) {
-    await prisma.event.update({
-      where: { id: eventId },
-      data: { phase: "results" },
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.event.findUnique({ where: { id: eventId } });
+      if (!fresh || fresh.phase !== "dating") {
+        throw new Error("PHASE_CONFLICT");
+      }
+      await tx.event.update({
+        where: { id: eventId },
+        data: { phase: "results" },
+      });
     });
 
     const updatedEvent = await getEventViewById(eventId);
@@ -283,11 +299,9 @@ async function advanceRound(
     return response;
   }
 
-  // Otherwise, generate next round pairings
   const nextRound = currentRound + 1;
   const participantIds = parseParticipantIds(event.participantIds, event.pairings);
 
-  // Load agents from both tables using the participant IDs
   const agentsForMatching = await loadAgentsByIds(participantIds);
 
   if (agentsForMatching.length < 2) {
@@ -297,7 +311,6 @@ async function advanceRound(
     );
   }
 
-  // Build usedPairs from all existing pairings in this event
   const usedPairs = new Set<string>();
   for (const p of event.pairings) {
     usedPairs.add(pairKey(p.agentAId, p.agentBId));
@@ -312,10 +325,15 @@ async function advanceRound(
   const newPairings = roundResults[0] || [];
 
   if (newPairings.length === 0) {
-    // No more unique pairings possible, go to results
-    await prisma.event.update({
-      where: { id: eventId },
-      data: { phase: "results" },
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.event.findUnique({ where: { id: eventId } });
+      if (!fresh || fresh.phase !== "dating") {
+        throw new Error("PHASE_CONFLICT");
+      }
+      await tx.event.update({
+        where: { id: eventId },
+        data: { phase: "results" },
+      });
     });
 
     const updatedEvent = await getEventViewById(eventId);
@@ -325,6 +343,11 @@ async function advanceRound(
   }
 
   await prisma.$transaction(async (tx) => {
+    const fresh = await tx.event.findUnique({ where: { id: eventId } });
+    if (!fresh || fresh.phase !== "dating" || fresh.currentRound !== currentRound) {
+      throw new Error("PHASE_CONFLICT");
+    }
+
     await tx.event.update({
       where: { id: eventId },
       data: { currentRound: nextRound },
