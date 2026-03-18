@@ -102,6 +102,7 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
           {canCancel && (
             <button
               onClick={onCancel}
+              aria-label={`取消 ${agentA.name} 和 ${agentB.name} 的约会`}
               className="text-[10px] sm:text-xs px-2 py-0.5 rounded-lg border border-[var(--border)] text-muted hover:text-coral hover:border-coral/30 transition-colors"
             >
               取消约会
@@ -170,6 +171,7 @@ export function DateRoom({ date, onRun, onCancel, running }: DateRoomProps) {
           <button
             onClick={onRun}
             disabled={running}
+            aria-label={`开始 ${agentA.name} 和 ${agentB.name} 的约会`}
             className="
               w-full sm:w-auto
               px-6 py-2.5 rounded-xl text-sm font-semibold text-white

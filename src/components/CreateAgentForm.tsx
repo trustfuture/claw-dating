@@ -57,6 +57,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
   const [personalityType, setPersonalityType] = useState(editAgent?.personalityType ?? '')
   const [interests, setInterests] = useState<string[]>(editAgent?.interests ?? [])
   const [interestInput, setInterestInput] = useState('')
+  const [duplicateHighlight, setDuplicateHighlight] = useState('')
   const [catchphrase, setCatchphrase] = useState(editAgent?.catchphrase ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -214,6 +215,8 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
               key={emoji}
               type="button"
               onClick={() => { setAvatarEmoji(emoji); setTouched(t => ({ ...t, avatarEmoji: true })) }}
+              aria-pressed={avatarEmoji === emoji}
+              aria-label={`选择头像 ${emoji}`}
               className={`
                 w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all
                 ${avatarEmoji === emoji
@@ -266,6 +269,7 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
               key={label}
               type="button"
               onClick={() => { setPersonalityType(label); setTouched(t => ({ ...t, personalityType: true })) }}
+              aria-pressed={personalityType === label}
               className={`
                 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group relative
                 ${personalityType === label
@@ -294,12 +298,15 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
             {interests.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-teal/10 text-teal border border-teal/20"
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-teal/10 text-teal border transition-colors ${
+                  duplicateHighlight === tag ? 'border-coral/50 ring-1 ring-coral/30' : 'border-teal/20'
+                }`}
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => setInterests((prev) => prev.filter((t) => t !== tag))}
+                  aria-label={`删除标签 ${tag}`}
                   className="hover:text-coral transition-colors"
                 >
                   <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
@@ -314,21 +321,35 @@ export function CreateAgentForm({ onCreated, editAgent, onCancel }: CreateAgentF
           <input
             type="text"
             value={interestInput}
-            onChange={(e) => setInterestInput(e.target.value)}
+            onChange={(e) => { setInterestInput(e.target.value); setDuplicateHighlight('') }}
             onKeyDown={(e) => {
               if ((e.key === 'Enter' || e.key === ',') && interestInput.trim()) {
                 e.preventDefault()
                 const tag = interestInput.trim().replace(/,/g, '')
-                if (tag && !interests.includes(tag) && interests.length < 10) {
+                if (tag && interests.includes(tag)) {
+                  setDuplicateHighlight(tag)
+                  setTimeout(() => setDuplicateHighlight(''), 1500)
+                  setInterestInput('')
+                  return
+                }
+                if (tag && interests.length < 10) {
                   setInterests((prev) => [...prev, tag])
                 }
                 setInterestInput('')
               }
+              if (e.key === 'Backspace' && !interestInput && interests.length > 0) {
+                setInterests((prev) => prev.slice(0, -1))
+              }
             }}
-            placeholder="输入兴趣后按回车添加"
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-purple/30 focus:border-purple/50 transition-all"
+            placeholder={interests.length >= 10 ? '已达上限' : '输入兴趣后按回车添加'}
+            disabled={interests.length >= 10}
+            aria-label="兴趣标签输入"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-purple/30 focus:border-purple/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
+        {interests.length > 0 && (
+          <div className="text-[10px] text-muted mt-1">{interests.length}/10 个标签</div>
+        )}
         <div className="flex flex-wrap gap-1.5 mt-2">
           {INTEREST_SUGGESTIONS.filter((s) => !interests.includes(s)).slice(0, 8).map((s) => (
             <button

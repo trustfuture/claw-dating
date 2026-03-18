@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { DateRoom } from '@/components/DateRoom'
 import { useToast } from '@/components/Toast'
+import { useNotifications } from '@/hooks/useNotifications'
 
 interface DateData {
   id: string
@@ -143,6 +144,12 @@ export default function DatesPage() {
   const failCountRef = useRef(0)
   const [showError, setShowError] = useState(false)
   const { addToast } = useToast()
+  const { requestPermission, notify } = useNotifications()
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestPermission()
+  }, [requestPermission])
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -277,11 +284,17 @@ export default function DatesPage() {
         }
 
         if (event.type === 'complete') {
-          patchDate(dateId, (date) => ({
-            ...date,
-            status: 'completed',
-            errorMessage: '',
-          }))
+          patchDate(dateId, (date) => {
+            notify('约会完成', {
+              body: `${date.pairing.agentA.name} 和 ${date.pairing.agentB.name} 的约会已结束`,
+              icon: '/favicon.ico',
+            })
+            return {
+              ...date,
+              status: 'completed',
+              errorMessage: '',
+            }
+          })
           return
         }
 
@@ -306,7 +319,7 @@ export default function DatesPage() {
     } finally {
       clearRunningDate(dateId)
     }
-  }, [addToast, clearRunningDate, fetchEvent, markDateRunning, patchDate])
+  }, [addToast, clearRunningDate, fetchEvent, markDateRunning, notify, patchDate])
 
   const runAllDates = async () => {
     const pendingDates = dates.filter((d) => d.status === 'pending')
