@@ -68,7 +68,7 @@ export function Navbar() {
                 {user.avatarUrl ? (
                   // Remote avatar domains are user-controlled, so we keep a plain img here.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatarUrl} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover" />
+                  <img src={user.avatarUrl} alt={user.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover" />
                 ) : (
                   <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-purple/10 text-purple flex items-center justify-center text-xs font-bold">
                     {(user.name || 'U')[0]}

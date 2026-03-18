@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { validateEnv } from "@/lib/env";
 
 function hydrateDatabaseEnv() {
   const pooledUrl =
@@ -22,6 +23,7 @@ function hydrateDatabaseEnv() {
 }
 
 hydrateDatabaseEnv();
+validateEnv();
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
