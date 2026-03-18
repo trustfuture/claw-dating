@@ -17,6 +17,24 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "龙虾相亲大会 | Claw Dating",
+            "description": "AI 分身速配约会平台 — 让你的 SecondMe 替你相亲",
+            "applicationCategory": "SocialNetworkingApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          })
+        }}
+      />
       {/* Hero */}
       <header id="main-content" className="pt-12 sm:pt-20 pb-10 sm:pb-16 px-4 sm:px-6 text-center">
         <div className="max-w-2xl mx-auto">

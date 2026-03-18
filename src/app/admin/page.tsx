@@ -34,6 +34,9 @@ export default function AdminPage() {
   const [events, setEvents] = useState<AdminEvent[]>([])
   const [tab, setTab] = useState<'agents' | 'events'>('agents')
   const [fetching, setFetching] = useState(true)
+  const [cleanupDays, setCleanupDays] = useState(30)
+  const [cleaning, setCleaning] = useState(false)
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -93,6 +96,30 @@ export default function AdminPage() {
       }
     } catch {
       addToast('error', '网络错误')
+    }
+  }
+
+  const handleCleanup = async () => {
+    if (!confirm(`确定要删除 ${cleanupDays} 天前的已结束活动吗？此操作不可撤销。`)) return
+    setCleaning(true)
+    setCleanupResult(null)
+    try {
+      const res = await fetch('/api/admin/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ daysOld: cleanupDays }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setCleanupResult(data.message)
+        fetchData()
+      } else {
+        addToast('error', data.error || '清理失败')
+      }
+    } catch {
+      addToast('error', '网络错误')
+    } finally {
+      setCleaning(false)
     }
   }
 
@@ -247,6 +274,35 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {/* Cleanup Section */}
+        <div className="mt-8 bg-white rounded-xl border border-[var(--border)] p-5">
+          <h3 className="text-sm font-semibold mb-3">数据清理</h3>
+          <p className="text-xs text-muted mb-4">删除指定天数前的已结束活动及其所有数据</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-secondary">删除</span>
+              <input
+                type="number"
+                value={cleanupDays}
+                onChange={(e) => setCleanupDays(Math.max(1, Number(e.target.value) || 30))}
+                className="w-16 px-2 py-1.5 rounded-lg border border-[var(--border)] text-sm text-center"
+                min={1}
+                max={365}
+              />
+              <span className="text-xs text-secondary">天前的活动</span>
+            </div>
+            <button
+              onClick={handleCleanup}
+              disabled={cleaning}
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-coral border border-coral/20 hover:bg-coral/5 transition-colors disabled:opacity-50"
+            >
+              {cleaning ? '清理中...' : '执行清理'}
+            </button>
+          </div>
+          {cleanupResult && (
+            <p className="text-xs text-teal mt-3">{cleanupResult}</p>
+          )}
+        </div>
       </main>
     </div>
   )

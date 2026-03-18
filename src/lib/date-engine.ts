@@ -46,6 +46,28 @@ const DEFAULT_TURNS_PER_AGENT = EVENT_LIMITS.DEFAULT_TURNS_PER_AGENT;
 // Helpers
 // ---------------------------------------------------------------------------
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 2,
+  baseDelay: number = 1000,
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (lastError.message.includes('401') || lastError.message.includes('403') || lastError.message.includes('未授权')) {
+        throw lastError;
+      }
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function parseRating(text: string): { score: number; comment: string } {
   const scoreMatch = text.match(/SCORE:\s*(\d+(?:\.\d+)?)/i);
   const commentMatch = text.match(/COMMENT:\s*([\s\S]*)/i);
@@ -149,14 +171,14 @@ async function sendMessageToAgent(
     if (!agent.token) {
       throw new Error(`${agent.name} 的 SecondMe 未授权，请重新登录`);
     }
-    return sendChatMessage(agent.token, message, sessionId);
+    return withRetry(() => sendChatMessage(agent.token!, message, sessionId));
   }
 
   if (agent.channel === "a2a") {
     if (!agent.a2aUrl) {
       throw new Error(`${agent.name} 的 A2A URL 未配置`);
     }
-    return sendA2AMessage(agent.a2aUrl, message, sessionId);
+    return withRetry(() => sendA2AMessage(agent.a2aUrl!, message, sessionId));
   }
 
   throw new Error(`Unknown agent channel: ${agent.channel}`);
