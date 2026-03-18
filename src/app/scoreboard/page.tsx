@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useLocale } from '@/hooks/useLocale'
 import { Navbar } from '@/components/Navbar'
 
 interface Award {
@@ -108,6 +109,7 @@ interface HistoryEvent {
 
 function ScoreboardContent() {
   const { user, loading } = useAuth()
+  const { t } = useLocale()
   const searchParams = useSearchParams()
   const eventId = searchParams.get('eventId')
   const [awards, setAwards] = useState<Award[]>([])
@@ -450,7 +452,7 @@ function ScoreboardContent() {
             </a>
           )}
           <div className="text-4xl sm:text-5xl mb-3">🏆</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold">排行榜</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">{t('scoreboard.title')}</h1>
           <p className="text-secondary text-sm mt-1">
             {eventName ? `${eventName} - 结果揭晓` : '相亲大会结果揭晓'}
           </p>
@@ -479,7 +481,7 @@ function ScoreboardContent() {
                 }}
                 className="px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
               >
-                {copied ? '已复制!' : '复制分享文案'}
+                {copied ? t('scoreboard.copied') : t('scoreboard.copy')}
               </button>
               <button
                 onClick={() => {
@@ -503,7 +505,7 @@ function ScoreboardContent() {
                 }}
                 className="px-5 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] text-secondary hover:bg-purple/5 hover:border-purple/20 transition-all"
               >
-                导出 CSV
+                {t('scoreboard.export')}
               </button>
               {typeof navigator !== 'undefined' && navigator.share && (
                 <button
@@ -518,7 +520,7 @@ function ScoreboardContent() {
                   }}
                   className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-purple to-[#6c3fc4] shadow-md transition-all"
                 >
-                  分享
+                  {t('scoreboard.share')}
                 </button>
               )}
             </div>
@@ -541,7 +543,7 @@ function ScoreboardContent() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索嘉宾..."
+                placeholder={t('scoreboard.search')}
                 aria-label="搜索排行榜"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple/30 transition-all"
               />
@@ -585,7 +587,7 @@ function ScoreboardContent() {
         {/* Podium - Top 3 */}
         {podiumMatches.length > 0 && (
           <section className="mb-8 sm:mb-10">
-            <h2 className="font-display text-lg sm:text-xl font-bold mb-4">最佳配对</h2>
+            <h2 className="font-display text-lg sm:text-xl font-bold mb-4">{t('scoreboard.bestMatch')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {podiumMatches.map((m, i) => (
                 <div
@@ -623,7 +625,7 @@ function ScoreboardContent() {
 
         {/* Remaining Match Results */}
         <section className="mb-8 sm:mb-10">
-          <h2 className="font-display text-lg sm:text-xl font-bold mb-4">约会排名</h2>
+          <h2 className="font-display text-lg sm:text-xl font-bold mb-4">{t('scoreboard.dateRanking')}</h2>
           {filteredMatches.length === 0 ? (
             <div className="text-center py-16 text-muted">
               {q ? (
@@ -686,7 +688,7 @@ function ScoreboardContent() {
         {/* Personal Stats */}
         {filteredStats.length > 0 && (
           <section>
-            <h2 className="font-display text-lg sm:text-xl font-bold mb-4">个人数据</h2>
+            <h2 className="font-display text-lg sm:text-xl font-bold mb-4">{t('scoreboard.personalStats')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {filteredStats.map((stat, i) => (
                 <div

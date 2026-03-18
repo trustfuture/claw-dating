@@ -58,6 +58,13 @@ export default function RootLayout({
             } catch(e) {}
           })();
         `}} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js').catch(function() {});
+            });
+          }
+        `}} />
       </head>
       <body className={`${notoSans.variable} ${playfair.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text-primary)]`}>
         <a
