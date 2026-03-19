@@ -32,8 +32,9 @@ jest.mock('@/lib/session-refresh', () => ({
   persistRefreshedSession: jest.fn(),
 }));
 
+const mockCheckRateLimit = jest.fn();
 jest.mock('@/lib/rate-limit', () => ({
-  checkRateLimit: jest.fn().mockReturnValue({ allowed: true }),
+  get checkRateLimit() { return mockCheckRateLimit; },
   RATE_LIMITS: { eventCreate: {} },
 }));
 
@@ -70,6 +71,7 @@ describe('POST /api/events', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetSession.mockResolvedValue({ userId: 'u1', accessToken: 'tok' });
+    mockCheckRateLimit.mockReturnValue({ allowed: true });
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -133,8 +135,7 @@ describe('POST /api/events', () => {
   });
 
   it('rate limits event creation', async () => {
-    const { checkRateLimit } = require('@/lib/rate-limit');
-    checkRateLimit.mockReturnValue({ allowed: false });
+    mockCheckRateLimit.mockReturnValue({ allowed: false });
 
     const request = new NextRequest('http://localhost/api/events', {
       method: 'POST',

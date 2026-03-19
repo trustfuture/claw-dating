@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  poweredBy: false,
-
   // Security headers applied to all routes
   async headers() {
     return [

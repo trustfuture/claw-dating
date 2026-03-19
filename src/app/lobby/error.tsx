@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 export default function LobbyError({
   error,
   reset,
@@ -22,12 +24,12 @@ export default function LobbyError({
           >
             重试
           </button>
-          <a
+          <Link
             href="/"
             className="px-6 py-2.5 rounded-xl text-sm font-semibold text-secondary border border-[var(--border)] hover:bg-[var(--bg-elevated)] transition-colors"
           >
             返回首页
-          </a>
+          </Link>
         </div>
       </div>
     </div>

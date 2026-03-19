@@ -50,8 +50,9 @@ jest.mock('@/lib/session-refresh', () => ({
   persistRefreshedSession: jest.fn(),
 }));
 
+const mockCheckRateLimitAsync = jest.fn();
 jest.mock('@/lib/rate-limit', () => ({
-  checkRateLimitAsync: jest.fn().mockResolvedValue({ allowed: true }),
+  get checkRateLimitAsync() { return mockCheckRateLimitAsync; },
   RATE_LIMITS: { a2aRegister: {} },
 }));
 
@@ -67,8 +68,7 @@ describe('POST /api/a2a/register', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetSession.mockResolvedValue({ userId: 'u1', accessToken: 'tok' });
-    const { checkRateLimitAsync } = require('@/lib/rate-limit');
-    checkRateLimitAsync.mockResolvedValue({ allowed: true });
+    mockCheckRateLimitAsync.mockResolvedValue({ allowed: true });
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -78,8 +78,7 @@ describe('POST /api/a2a/register', () => {
   });
 
   it('returns 429 when rate limited', async () => {
-    const { checkRateLimitAsync } = require('@/lib/rate-limit');
-    checkRateLimitAsync.mockResolvedValue({ allowed: false });
+    mockCheckRateLimitAsync.mockResolvedValue({ allowed: false });
     const response = await POST(makeRequest({ url: 'https://example.com' }));
     expect(response.status).toBe(429);
   });
