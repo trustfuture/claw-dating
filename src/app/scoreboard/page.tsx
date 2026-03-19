@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useLocale } from '@/hooks/useLocale'
 import { Navbar } from '@/components/Navbar'
 import { ScrollToTop } from '@/components/ScrollToTop'
+import { Confetti } from '@/components/Confetti'
 import { computeScoreboardResults, type Award, type MatchResult, type AgentStat, type ScoreboardEvent } from '@/lib/scoreboard-compute'
 
 // Types imported from @/lib/scoreboard-compute
@@ -169,6 +170,7 @@ function ScoreboardContent() {
 
   return (
     <div className="min-h-screen">
+      <Confetti active={revealed && awards.length > 0} />
       <Navbar />
 
       <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
