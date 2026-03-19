@@ -176,6 +176,17 @@ export default function DatesPage() {
     if (!loading && !user) window.location.href = '/'
   }, [loading, user])
 
+  // Warn before leaving when dates are running
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (runningDateIds.length > 0 || actionPending) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [runningDateIds.length, actionPending])
+
   const fetchEvent = useCallback(() => {
     fetch('/api/events')
       .then((r) => r.json())
