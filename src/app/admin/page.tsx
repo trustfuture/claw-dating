@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Navbar } from '@/components/Navbar'
 import { useToast } from '@/components/Toast'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface AdminAgent {
   id: string
@@ -27,6 +28,12 @@ interface AdminEvent {
   createdAt: string
 }
 
+type ConfirmAction =
+  | { kind: 'deleteAgent'; id: string; type: string; name: string }
+  | { kind: 'deleteEvent'; id: string; name: string }
+  | { kind: 'resetEvent'; id: string; name: string }
+  | { kind: 'cleanup' }
+
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const { addToast } = useToast()
@@ -37,6 +44,8 @@ export default function AdminPage() {
   const [cleanupDays, setCleanupDays] = useState(30)
   const [cleaning, setCleaning] = useState(false)
   const [cleanupResult, setCleanupResult] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) window.location.href = '/'
@@ -67,77 +76,104 @@ export default function AdminPage() {
     fetchData()
   }, [fetchData])
 
-  const deleteAgent = async (id: string, type: string) => {
-    if (!confirm('确定要删除这个 Agent 吗？')) return
-    try {
-      const res = await fetch(`/api/admin/agents/${id}?type=${type}`, { method: 'DELETE' })
-      if (res.ok) {
-        addToast('success', 'Agent 已删除')
-        fetchData()
-      } else {
-        const data = await res.json()
-        addToast('error', data.error || '删除失败')
-      }
-    } catch {
-      addToast('error', '网络错误')
-    }
-  }
+  const handleConfirm = async () => {
+    if (!confirmAction) return
+    setConfirming(true)
 
-  const deleteEvent = async (id: string) => {
-    if (!confirm('确定要删除这个活动及其所有数据吗？此操作不可撤销。')) return
     try {
-      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        addToast('success', '活动已删除')
-        fetchData()
-      } else {
-        const data = await res.json()
-        addToast('error', data.error || '删除失败')
-      }
-    } catch {
-      addToast('error', '网络错误')
-    }
-  }
-
-  const handleCleanup = async () => {
-    if (!confirm(`确定要删除 ${cleanupDays} 天前的已结束活动吗？此操作不可撤销。`)) return
-    setCleaning(true)
-    setCleanupResult(null)
-    try {
-      const res = await fetch('/api/admin/cleanup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ daysOld: cleanupDays }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setCleanupResult(data.message)
-        fetchData()
-      } else {
-        addToast('error', data.error || '清理失败')
+      switch (confirmAction.kind) {
+        case 'deleteAgent': {
+          const res = await fetch(`/api/admin/agents/${confirmAction.id}?type=${confirmAction.type}`, { method: 'DELETE' })
+          if (res.ok) {
+            addToast('success', 'Agent 已删除')
+            fetchData()
+          } else {
+            const data = await res.json()
+            addToast('error', data.error || '删除失败')
+          }
+          break
+        }
+        case 'deleteEvent': {
+          const res = await fetch(`/api/admin/events/${confirmAction.id}`, { method: 'DELETE' })
+          if (res.ok) {
+            addToast('success', '活动已删除')
+            fetchData()
+          } else {
+            const data = await res.json()
+            addToast('error', data.error || '删除失败')
+          }
+          break
+        }
+        case 'resetEvent': {
+          const res = await fetch(`/api/admin/events/${confirmAction.id}/reset`, { method: 'POST' })
+          if (res.ok) {
+            addToast('success', '活动已重置')
+            fetchData()
+          } else {
+            const data = await res.json()
+            addToast('error', data.error || '重置失败')
+          }
+          break
+        }
+        case 'cleanup': {
+          setCleaning(true)
+          setCleanupResult(null)
+          const res = await fetch('/api/admin/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ daysOld: cleanupDays }),
+          })
+          const data = await res.json()
+          if (res.ok) {
+            setCleanupResult(data.message)
+            fetchData()
+          } else {
+            addToast('error', data.error || '清理失败')
+          }
+          setCleaning(false)
+          break
+        }
       }
     } catch {
       addToast('error', '网络错误')
     } finally {
-      setCleaning(false)
+      setConfirming(false)
+      setConfirmAction(null)
     }
   }
 
-  const resetEvent = async (id: string) => {
-    if (!confirm('确定要重置这个活动吗？所有约会数据将被清除。')) return
-    try {
-      const res = await fetch(`/api/admin/events/${id}/reset`, { method: 'POST' })
-      if (res.ok) {
-        addToast('success', '活动已重置')
-        fetchData()
-      } else {
-        const data = await res.json()
-        addToast('error', data.error || '重置失败')
-      }
-    } catch {
-      addToast('error', '网络错误')
-    }
-  }
+  const confirmConfig = confirmAction
+    ? {
+        deleteAgent: {
+          icon: '⚠️',
+          title: '删除 Agent？',
+          description: `确定要删除 ${(confirmAction as Extract<ConfirmAction, { kind: 'deleteAgent' }>).name} 吗？`,
+          confirmLabel: '确定删除',
+          confirmingLabel: '删除中...',
+        },
+        deleteEvent: {
+          icon: '⚠️',
+          title: '删除活动？',
+          description: `确定要删除「${(confirmAction as Extract<ConfirmAction, { kind: 'deleteEvent' }>).name}」及其所有数据吗？此操作不可撤销。`,
+          confirmLabel: '确定删除',
+          confirmingLabel: '删除中...',
+        },
+        resetEvent: {
+          icon: '🔄',
+          title: '重置活动？',
+          description: `确定要重置「${(confirmAction as Extract<ConfirmAction, { kind: 'resetEvent' }>).name}」吗？所有约会数据将被清除。`,
+          confirmLabel: '确定重置',
+          confirmingLabel: '重置中...',
+        },
+        cleanup: {
+          icon: '🧹',
+          title: '数据清理？',
+          description: `确定要删除 ${cleanupDays} 天前的已结束活动吗？此操作不可撤销。`,
+          confirmLabel: '执行清理',
+          confirmingLabel: '清理中...',
+        },
+      }[confirmAction.kind]
+    : null
 
   if (loading || fetching) {
     return (
@@ -188,24 +224,25 @@ export default function AdminPage() {
               agents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="bg-white rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between"
+                  className="bg-white rounded-xl border border-[var(--border)] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-2xl flex-shrink-0">{agent.avatarEmoji}</span>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{agent.name}</div>
-                      <div className="text-[10px] text-muted flex items-center gap-2">
+                      <div className="text-[10px] text-muted flex flex-wrap items-center gap-2">
                         <span className={`px-1.5 py-0.5 rounded ${agent.type === 'a2a' ? 'bg-purple/10 text-purple' : 'bg-teal/10 text-teal'}`}>
                           {agent.type === 'a2a' ? 'A2A' : 'SecondMe'}
                         </span>
                         <span>{agent.personalityType}</span>
-                        {agent.url && <span className="truncate max-w-[200px]">{agent.url}</span>}
+                        {agent.url && <span className="truncate max-w-[120px] sm:max-w-[200px]">{agent.url}</span>}
                       </div>
                     </div>
                   </div>
                   <button
-                    onClick={() => deleteAgent(agent.id, agent.type)}
-                    className="text-xs px-3 py-1.5 rounded-lg text-coral border border-coral/20 hover:bg-coral/5 transition-colors flex-shrink-0"
+                    onClick={() => setConfirmAction({ kind: 'deleteAgent', id: agent.id, type: agent.type, name: agent.name })}
+                    className="text-xs px-3 py-1.5 rounded-lg text-coral border border-coral/20 hover:bg-coral/5 transition-colors flex-shrink-0 self-end sm:self-center"
+                    aria-label={`删除 ${agent.name}`}
                   >
                     删除
                   </button>
@@ -226,10 +263,10 @@ export default function AdminPage() {
                   key={event.id}
                   className="bg-white rounded-xl border border-[var(--border)] px-4 py-3"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <div className="text-sm font-semibold">{event.name}</div>
-                      <div className="text-[10px] text-muted flex items-center gap-2 mt-0.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate">{event.name}</div>
+                      <div className="text-[10px] text-muted flex flex-wrap items-center gap-2 mt-0.5">
                         <span className={`px-1.5 py-0.5 rounded ${
                           event.phase === 'results' ? 'bg-teal/10 text-teal'
                             : event.phase === 'dating' ? 'bg-purple/10 text-purple'
@@ -242,7 +279,7 @@ export default function AdminPage() {
                         <span>R{event.currentRound}/{event.totalRounds}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                       <a
                         href={`/watch/${event.id}`}
                         className="text-xs px-3 py-1.5 rounded-lg text-purple border border-purple/20 hover:bg-purple/5 transition-colors"
@@ -256,14 +293,16 @@ export default function AdminPage() {
                         排行榜
                       </a>
                       <button
-                        onClick={() => resetEvent(event.id)}
+                        onClick={() => setConfirmAction({ kind: 'resetEvent', id: event.id, name: event.name })}
                         className="text-xs px-3 py-1.5 rounded-lg text-secondary border border-[var(--border)] hover:bg-[var(--bg-elevated)] transition-colors"
+                        aria-label={`重置 ${event.name}`}
                       >
                         重置
                       </button>
                       <button
-                        onClick={() => deleteEvent(event.id)}
+                        onClick={() => setConfirmAction({ kind: 'deleteEvent', id: event.id, name: event.name })}
                         className="text-xs px-3 py-1.5 rounded-lg text-coral border border-coral/20 hover:bg-coral/5 transition-colors"
+                        aria-label={`删除 ${event.name}`}
                       >
                         删除
                       </button>
@@ -274,14 +313,16 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
         {/* Cleanup Section */}
         <div className="mt-8 bg-white rounded-xl border border-[var(--border)] p-5">
           <h3 className="text-sm font-semibold mb-3">数据清理</h3>
           <p className="text-xs text-muted mb-4">删除指定天数前的已结束活动及其所有数据</p>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-secondary">删除</span>
+              <label htmlFor="cleanup-days" className="text-xs text-secondary">删除</label>
               <input
+                id="cleanup-days"
                 type="number"
                 value={cleanupDays}
                 onChange={(e) => setCleanupDays(Math.max(1, Number(e.target.value) || 30))}
@@ -292,7 +333,7 @@ export default function AdminPage() {
               <span className="text-xs text-secondary">天前的活动</span>
             </div>
             <button
-              onClick={handleCleanup}
+              onClick={() => setConfirmAction({ kind: 'cleanup' })}
               disabled={cleaning}
               className="px-4 py-1.5 rounded-lg text-xs font-semibold text-coral border border-coral/20 hover:bg-coral/5 transition-colors disabled:opacity-50"
             >
@@ -304,6 +345,22 @@ export default function AdminPage() {
           )}
         </div>
       </main>
+
+      {/* Confirm Dialog */}
+      {confirmConfig && (
+        <ConfirmDialog
+          open={!!confirmAction}
+          onClose={() => !confirming && setConfirmAction(null)}
+          onConfirm={handleConfirm}
+          confirming={confirming}
+          icon={confirmConfig.icon}
+          titleId="admin-confirm-title"
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          confirmingLabel={confirmConfig.confirmingLabel}
+        />
+      )}
     </div>
   )
 }

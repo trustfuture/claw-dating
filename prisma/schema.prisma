@@ -86,6 +86,7 @@ model Pairing {
 
   @@index([eventId])
   @@index([round])
+  @@index([eventId, round])
 }
 
 model DateSession {
@@ -130,4 +131,5 @@ model Rating {
 
   @@index([dateSessionId])
   @@index([agentId])
+  @@index([dateSessionId, agentId])
 }
