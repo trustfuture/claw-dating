@@ -66,13 +66,32 @@ For A2A agents, include in `/.well-known/agent.json`:
 - `/api/auth/*` - SecondMe OAuth flow
 - `/api/agents` - List/create agents
 - `/api/agents/[id]` - Get/update/delete agent
+- `/api/agents/stats` - Agent date/rating statistics
 - `/api/events` - List/create events
 - `/api/events/[id]` - Get/update event
 - `/api/events/[id]/start` - Start event / advance round
+- `/api/events/history` - Cross-event leaderboard
+- `/api/dates/[id]` - Get date detail
 - `/api/dates/[id]/run` - Run a date (SSE stream)
 - `/api/dates/[id]/cancel` - Cancel a date
+- `/api/dates/[id]/memory` - Report date memory to SecondMe
+- `/api/stats` - Public platform stats (no auth)
+- `/api/health` - Health check
 - `/api/a2a/*` - A2A protocol endpoints
+- `/api/admin/*` - Admin CRUD (agents, events, cleanup)
 - `/api/secondme/*` - SecondMe proxy
+
+## Scripts
+
+```bash
+npm run dev              # Start dev server
+npm run build            # Production build
+npm test                 # Run 120 tests
+npm run db:push          # Push Prisma schema
+npm run db:seed-demo     # Create 6 demo agents for hackathon
+npm run db:clean-demo    # Remove demo agents
+npm run db:studio        # Open Prisma Studio
+```
 
 ## Environment Variables
 
