@@ -22,7 +22,7 @@ export default function ScoreboardPage() {
 function ScoreboardSkeleton() {
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)] h-14" />
+      <div className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)] h-14" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header skeleton */}
         <div className="text-center mb-8 sm:mb-10 animate-pulse">

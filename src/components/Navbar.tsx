@@ -18,7 +18,7 @@ export function Navbar() {
 
   return (
   <>
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)]">
+    <header className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4 md:gap-8">
           <Link href="/lobby" className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export function Navbar() {
 
       {/* Mobile dropdown menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-[var(--border)] bg-white/95 backdrop-blur-xl animate-slide-in">
+        <div className="md:hidden border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-xl animate-slide-in">
           <nav className="px-4 py-3 space-y-1">
             {NAV_ITEMS.filter(item => !item.adminOnly || user?.role === 'admin').map((item) => (
               <Link
@@ -176,7 +176,7 @@ export function Navbar() {
     {showHelp && (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={closeHelp} onKeyDown={(e) => e.key === 'Escape' && closeHelp()}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="键盘快捷键">
+        <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="键盘快捷键">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-lg font-bold">键盘快捷键</h3>
             <button onClick={closeHelp} className="w-8 h-8 rounded-lg hover:bg-[var(--bg-elevated)] flex items-center justify-center transition-colors" aria-label="关闭">

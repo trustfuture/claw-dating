@@ -12,7 +12,7 @@ export function StatusBadge({ status }: { status: string }) {
   const c = config[status] || config.pending
   return (
     <span role="status" className={`text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium inline-flex items-center gap-1 ${c.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dotCls}`} aria-label={c.label} />
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dotCls} ${status === 'in_progress' ? 'animate-pulse' : ''}`} aria-label={c.label} />
       {c.label}
     </span>
   )
