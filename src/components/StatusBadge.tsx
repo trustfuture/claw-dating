@@ -2,10 +2,10 @@
 
 export function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string; dotCls: string }> = {
-    pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+    pending: { label: '等待中', cls: 'bg-[var(--bg-elevated)] text-muted', dotCls: 'bg-[var(--border)]' },
     in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple', dotCls: 'bg-purple' },
     completed: { label: '已完成', cls: 'bg-teal/10 text-teal', dotCls: 'bg-teal' },
-    cancelled: { label: '已取消', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+    cancelled: { label: '已取消', cls: 'bg-[var(--bg-elevated)] text-muted', dotCls: 'bg-[var(--border)]' },
     error: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
     failed: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
   }

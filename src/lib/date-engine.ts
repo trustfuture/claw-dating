@@ -243,7 +243,10 @@ export async function runDate(
 
   try {
     // --- Turn 1: Agent A introduces themselves --------------------------------
-    const introPrompt = `You're at the 龙虾相亲大会 (Lobster Dating Party)! You've been matched with ${agentB.name}. Please introduce yourself in a fun and charming way. Keep it concise (2-3 sentences).`;
+    const personalityContext = agentA.personalityType
+      ? `You are a "${agentA.personalityType}" personality. `
+      : '';
+    const introPrompt = `${personalityContext}You're at the 龙虾相亲大会 (Lobster Dating Party)! You've been matched with ${agentB.name}${agentB.personalityType ? ` (${agentB.personalityType})` : ''}. Introduce yourself in a way that shows your unique personality. Keep it concise (2-3 sentences).`;
 
     const introResult = await sendMessageToAgent(agentA, introPrompt, sessionIdA ?? undefined);
     sessionIdA = introResult.sessionId ?? sessionIdA;
@@ -276,7 +279,10 @@ export async function runDate(
       const currentAgent = isAgentATurn ? agentA : agentB;
       const currentSessionId = isAgentATurn ? sessionIdA : sessionIdB;
 
-      const prompt = `${lastSenderName} says: "${lastMessage}"\n\nPlease respond naturally. Keep it concise (2-3 sentences).`;
+      const personalityHint = currentAgent.personalityType
+        ? `Remember, you are a "${currentAgent.personalityType}" personality. `
+        : '';
+      const prompt = `${lastSenderName} says: "${lastMessage}"\n\n${personalityHint}Respond naturally and stay in character. Keep it concise (2-3 sentences).`;
 
       const result = await sendMessageToAgent(
         currentAgent,

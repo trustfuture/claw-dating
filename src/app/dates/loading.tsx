@@ -6,8 +6,8 @@ export default function DatesLoading() {
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6">
-          <div className="h-7 bg-gray-200 rounded w-40 mb-2 animate-pulse" />
-          <div className="h-4 bg-gray-100 rounded w-28 animate-pulse" />
+          <div className="h-7 bg-[var(--border)] rounded w-40 mb-2 animate-pulse" />
+          <div className="h-4 bg-[var(--bg-elevated)] rounded w-28 animate-pulse" />
         </div>
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -16,15 +16,15 @@ export default function DatesLoading() {
               className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden animate-pulse"
             >
               <div className="px-6 py-4 border-b border-[var(--border)] flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
-                <div className="h-4 bg-gray-200 rounded w-20" />
-                <div className="w-4 h-4 bg-gray-100 rounded" />
-                <div className="h-4 bg-gray-200 rounded w-20" />
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
-                <div className="ml-auto w-16 h-6 bg-gray-100 rounded-full" />
+                <div className="w-8 h-8 bg-[var(--border)] rounded-full" />
+                <div className="h-4 bg-[var(--border)] rounded w-20" />
+                <div className="w-4 h-4 bg-[var(--bg-elevated)] rounded" />
+                <div className="h-4 bg-[var(--border)] rounded w-20" />
+                <div className="w-8 h-8 bg-[var(--border)] rounded-full" />
+                <div className="ml-auto w-16 h-6 bg-[var(--bg-elevated)] rounded-full" />
               </div>
               <div className="px-6 py-8">
-                <div className="h-4 bg-gray-100 rounded w-1/2 mx-auto" />
+                <div className="h-4 bg-[var(--bg-elevated)] rounded w-1/2 mx-auto" />
               </div>
             </div>
           ))}

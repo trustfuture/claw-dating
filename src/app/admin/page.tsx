@@ -270,7 +270,7 @@ export default function AdminPage() {
                         <span className={`px-1.5 py-0.5 rounded ${
                           event.phase === 'results' ? 'bg-teal/10 text-teal'
                             : event.phase === 'dating' ? 'bg-purple/10 text-purple'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-[var(--bg-elevated)] text-muted'
                         }`}>
                           {event.phase}
                         </span>

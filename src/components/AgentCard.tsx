@@ -47,7 +47,7 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, o
         </div>
         <div
           className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-            agent.status === 'online' ? 'bg-teal' : 'bg-gray-300'
+            agent.status === 'online' ? 'bg-teal' : 'bg-[var(--border)]'
           }`}
           aria-label={agent.status === 'online' ? '在线' : '离线'}
           title={agent.status === 'online' ? '在线' : '离线'}

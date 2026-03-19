@@ -44,10 +44,10 @@ interface DateDetail {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; dotCls: string }> = {
-  pending: { label: '等待中', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+  pending: { label: '等待中', cls: 'bg-[var(--bg-elevated)] text-muted', dotCls: 'bg-[var(--border)]' },
   in_progress: { label: '进行中', cls: 'bg-purple/10 text-purple', dotCls: 'bg-purple' },
   completed: { label: '已完成', cls: 'bg-teal/10 text-teal', dotCls: 'bg-teal' },
-  cancelled: { label: '已取消', cls: 'bg-gray-100 text-gray-500', dotCls: 'bg-gray-400' },
+  cancelled: { label: '已取消', cls: 'bg-[var(--bg-elevated)] text-muted', dotCls: 'bg-[var(--border)]' },
   error: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
   failed: { label: '失败', cls: 'bg-coral/10 text-coral', dotCls: 'bg-coral' },
 }
@@ -139,12 +139,12 @@ export default function DateDetailPage() {
         <Navbar />
         <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-48" />
-            <div className="h-40 bg-gray-100 rounded-2xl" />
+            <div className="h-8 bg-[var(--border)] rounded w-48" />
+            <div className="h-40 bg-[var(--bg-elevated)] rounded-2xl" />
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className={`flex ${i % 2 ? 'justify-end' : ''}`}>
-                  <div className="h-16 bg-gray-100 rounded-2xl w-3/5" />
+                  <div className="h-16 bg-[var(--bg-elevated)] rounded-2xl w-3/5" />
                 </div>
               ))}
             </div>

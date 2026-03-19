@@ -479,7 +479,7 @@ export default function DatesPage() {
     ? 'bg-teal'
     : fetchStatus === 'error'
       ? 'bg-coral'
-      : 'bg-gray-300'
+      : 'bg-[var(--border)]'
 
   return (
     <div className="min-h-screen">

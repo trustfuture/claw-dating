@@ -26,19 +26,19 @@ function ScoreboardSkeleton() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header skeleton */}
         <div className="text-center mb-8 sm:mb-10 animate-pulse">
-          <div className="w-12 h-12 rounded-full bg-gray-200 mx-auto mb-3" />
-          <div className="h-8 bg-gray-200 rounded w-40 mx-auto mb-2" />
-          <div className="h-4 bg-gray-100 rounded w-56 mx-auto" />
+          <div className="w-12 h-12 rounded-full bg-[var(--border)] mx-auto mb-3" />
+          <div className="h-8 bg-[var(--border)] rounded w-40 mx-auto mb-2" />
+          <div className="h-4 bg-[var(--bg-elevated)] rounded w-56 mx-auto" />
         </div>
 
         {/* Awards skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-10">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-[var(--border)] p-5 sm:p-6 animate-pulse">
-              <div className="w-10 h-10 rounded-full bg-gray-200 mx-auto mb-3" />
-              <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-24 mx-auto mb-2" />
-              <div className="h-6 bg-gray-100 rounded w-12 mx-auto" />
+              <div className="w-10 h-10 rounded-full bg-[var(--border)] mx-auto mb-3" />
+              <div className="h-3 bg-[var(--border)] rounded w-16 mx-auto mb-2" />
+              <div className="h-4 bg-[var(--border)] rounded w-24 mx-auto mb-2" />
+              <div className="h-6 bg-[var(--bg-elevated)] rounded w-12 mx-auto" />
             </div>
           ))}
         </div>
@@ -48,11 +48,11 @@ function ScoreboardSkeleton() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-[var(--border)] px-3 sm:px-5 py-3 sm:py-4 animate-pulse">
               <div className="flex items-center gap-4">
-                <div className="w-6 h-6 bg-gray-200 rounded" />
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
-                <div className="h-4 bg-gray-200 rounded flex-1" />
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
-                <div className="w-14 h-6 bg-gray-200 rounded" />
+                <div className="w-6 h-6 bg-[var(--border)] rounded" />
+                <div className="w-8 h-8 bg-[var(--border)] rounded-full" />
+                <div className="h-4 bg-[var(--border)] rounded flex-1" />
+                <div className="w-8 h-8 bg-[var(--border)] rounded-full" />
+                <div className="w-14 h-6 bg-[var(--border)] rounded" />
               </div>
             </div>
           ))}

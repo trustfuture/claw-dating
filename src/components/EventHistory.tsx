@@ -45,10 +45,10 @@ export function EventHistory({ eventHistory, currentEventId }: EventHistoryProps
                       <span className="text-sm font-bold truncate">{evt.name}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                         evt.phase === 'results' || evt.phase === 'completed'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-teal/10 text-teal'
                           : evt.phase === 'dating'
                             ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-600'
+                            : 'bg-[var(--bg-elevated)] text-secondary'
                       }`}>
                         {phaseLabel[evt.phase] || evt.phase}
                       </span>

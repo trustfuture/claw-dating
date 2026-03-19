@@ -292,9 +292,9 @@ function SkeletonMessage({ align, wide }: { align: 'left' | 'right'; wide?: bool
         `}
       >
         <div className="px-3 sm:px-4 py-2 sm:py-2.5">
-          <div className="h-2.5 w-12 bg-gray-200 rounded mb-2" />
-          <div className="h-3 w-full bg-gray-200 rounded mb-1" />
-          {wide && <div className="h-3 w-3/4 bg-gray-200 rounded" />}
+          <div className="h-2.5 w-12 bg-[var(--border)] rounded mb-2" />
+          <div className="h-3 w-full bg-[var(--border)] rounded mb-1" />
+          {wide && <div className="h-3 w-3/4 bg-[var(--border)] rounded" />}
         </div>
       </div>
     </div>
