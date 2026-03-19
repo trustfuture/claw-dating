@@ -29,10 +29,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  // Skip non-GET, API calls, and chrome-extension
+  // Skip non-GET and chrome-extension
   if (event.request.method !== 'GET') return
-  if (url.pathname.startsWith('/api/')) return
   if (url.protocol === 'chrome-extension:') return
+
+  // Stale-while-revalidate for read-only API endpoints
+  const SWR_API_PATHS = ['/api/agents', '/api/events', '/api/agents/stats', '/api/events/history']
+  if (url.pathname.startsWith('/api/') && SWR_API_PATHS.some((p) => url.pathname === p)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return response
+        })
+        return cached || fetchPromise
+      })
+    )
+    return
+  }
+
+  // Skip other API calls
+  if (url.pathname.startsWith('/api/')) return
 
   // Network-first for HTML pages (always try fresh)
   if (event.request.headers.get('accept')?.includes('text/html')) {

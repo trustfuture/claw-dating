@@ -62,7 +62,8 @@ async function withRetry<T>(
         throw lastError;
       }
       if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+        const jitter = Math.random() * 500;
+        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt) + jitter));
       }
     }
   }
