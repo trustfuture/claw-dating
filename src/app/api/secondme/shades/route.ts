@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { fetchUserShades } from "@/lib/secondme";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const session = await getSession();
@@ -22,7 +23,7 @@ export async function GET() {
 
     return response;
   } catch (err) {
-    console.error("Fetch shades error:", err);
+    logger.error("Fetch shades error", { route: "/api/secondme/shades", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取 SecondMe 分身信息失败" },
       { status: 502 },

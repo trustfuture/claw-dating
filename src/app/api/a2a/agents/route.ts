@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseJsonStringArray } from "@/lib/api-view";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -23,7 +24,7 @@ export async function GET() {
       })),
     });
   } catch (err) {
-    console.error("List A2A agents error:", err);
+    logger.error("List A2A agents error", { route: "/api/a2a/agents", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取 A2A 智能体列表失败" },
       { status: 500 },

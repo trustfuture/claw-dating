@@ -387,8 +387,11 @@ export default function DatesPage() {
     const pendingDates = dates.filter((d) => d.status === 'pending')
     setActionPending(true)
     try {
-      for (const d of pendingDates) {
-        await runDate(d.id)
+      // Run dates concurrently with a limit to avoid overwhelming the server
+      const concurrency = 3
+      for (let i = 0; i < pendingDates.length; i += concurrency) {
+        const batch = pendingDates.slice(i, i + concurrency)
+        await Promise.allSettled(batch.map((d) => runDate(d.id)))
       }
     } finally {
       setActionPending(false)
@@ -542,8 +545,11 @@ export default function DatesPage() {
                 onClick={async () => {
                   setActionPending(true)
                   try {
-                    for (const d of dates.filter(d => d.status === 'error')) {
-                      await runDate(d.id)
+                    const errorDates = dates.filter(d => d.status === 'error')
+                    const concurrency = 3
+                    for (let i = 0; i < errorDates.length; i += concurrency) {
+                      const batch = errorDates.slice(i, i + concurrency)
+                      await Promise.allSettled(batch.map((d) => runDate(d.id)))
                     }
                   } finally {
                     setActionPending(false)

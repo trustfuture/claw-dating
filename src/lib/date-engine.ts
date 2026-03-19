@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { sendChatMessage, reportAgentMemory } from "@/lib/secondme";
 import { sendA2AMessage } from "@/lib/a2a";
 import { EVENT_LIMITS } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,7 +74,7 @@ function parseRating(text: string): { score: number; comment: string } {
   const commentMatch = text.match(/COMMENT:\s*([\s\S]*)/i);
 
   if (!scoreMatch) {
-    console.warn("[date-engine] 评分解析失败，使用默认值 5:", text.slice(0, 100));
+    logger.warn("Rating parse failed, using default 5", { route: "date-engine", text: text.slice(0, 100) });
   }
 
   const score = scoreMatch ? Math.min(10, Math.max(1, parseFloat(scoreMatch[1]))) : 5;
@@ -382,7 +383,7 @@ export async function runDate(
         compatibilityScore: pairing.compatibilityScore,
         dateSessionId: dateSession.id,
       }).catch((err) => {
-        console.error("[memory-report] Failed to report date memories:", err);
+        logger.error("Failed to report date memories", { route: "date-engine", error: err instanceof Error ? err.message : String(err) });
       });
     }
 
@@ -524,7 +525,7 @@ async function reportDateMemories(
 
   for (const result of results) {
     if (result.status === "rejected") {
-      console.error("[memory-report] Individual report failed:", result.reason);
+      logger.error("Individual memory report failed", { route: "date-engine", error: result.reason instanceof Error ? result.reason.message : String(result.reason) });
     }
   }
 }
@@ -562,7 +563,7 @@ async function reportDateMemoriesSelective(
 
   for (const result of results) {
     if (result.status === "rejected") {
-      console.error("[memory-report] Individual report failed:", result.reason);
+      logger.error("Individual memory report failed", { route: "date-engine", error: result.reason instanceof Error ? result.reason.message : String(result.reason) });
     }
   }
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { serializeAuthPayload } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const session = await getSession();
@@ -38,7 +39,7 @@ export async function GET() {
 
     return response;
   } catch (err) {
-    console.error("Get current user error:", err);
+    logger.error("Get current user error", { route: "/api/auth/me", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取用户信息失败" },
       { status: 500 },

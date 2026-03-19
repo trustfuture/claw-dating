@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { exchangeToken, fetchUserInfo } from "@/lib/secondme";
 import { setSession, type Session } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const route = userInfo.route ? String(userInfo.route) : null;
 
     if (!secondmeUserId) {
-      console.error("SecondMe user info missing id:", userInfo);
+      logger.error("SecondMe user info missing id", { route: "/api/auth/callback", userInfo: JSON.stringify(userInfo) });
       return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
     }
 
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     setSession(response, session);
     return response;
   } catch (err) {
-    console.error("OAuth callback error:", err);
+    logger.error("OAuth callback error", { route: "/api/auth/callback", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
   }
 }

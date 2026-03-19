@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _request: NextRequest,
@@ -49,7 +50,7 @@ export async function POST(
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Cancel date session error:", err);
+    logger.error("Cancel date session error", { route: "/api/dates/[id]/cancel", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "取消约会失败" },
       { status: 500 },

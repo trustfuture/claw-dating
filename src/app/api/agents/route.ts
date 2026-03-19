@@ -7,6 +7,7 @@ import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
 import { checkRateLimitAsync, RATE_LIMITS } from "@/lib/rate-limit";
 import { PAGINATION } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       has_more: hasMore,
     });
   } catch (err) {
-    console.error("List agents error:", err);
+    logger.error("List agents error", { route: "/api/agents", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取智能体列表失败" },
       { status: 500 },
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (err) {
       // Non-fatal: shade fetch failure should not block agent creation
-      console.warn("Failed to fetch SecondMe shades for enrichment:", err);
+      logger.warn("Failed to fetch SecondMe shades for enrichment", { route: "/api/agents", error: err instanceof Error ? err.message : String(err) });
     }
 
     // Deduplicate interests
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("Create agent error:", err);
+    logger.error("Create agent error", { route: "/api/agents", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "创建智能体失败，请重试" },
       { status: 500 },

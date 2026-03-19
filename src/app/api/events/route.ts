@@ -5,6 +5,7 @@ import { getAllEventSummaries, getEventViewById, getLatestEventView } from "@/li
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { EVENT_LIMITS } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Get event error:", err);
+    logger.error("Get event error", { route: "/api/events", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取活动信息失败" },
       { status: 500 },
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("Create event error:", err);
+    logger.error("Create event error", { route: "/api/events", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "创建活动失败，请重试" },
       { status: 500 },

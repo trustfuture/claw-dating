@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const { error } = await requireAdmin();
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       })),
     });
   } catch (err) {
-    console.error("Cleanup error:", err);
+    logger.error("Cleanup error", { route: "/api/admin/cleanup", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "清理失败" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { reportDateMemoryForSession } from "@/lib/date-engine";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _request: NextRequest,
@@ -37,7 +38,7 @@ export async function POST(
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Memory report API error:", err);
+    logger.error("Memory report API error", { route: "/api/dates/[id]/memory", error: err instanceof Error ? err.message : String(err) });
     const response = NextResponse.json(
       { error: "报告约会记忆失败，请重试" },
       { status: 502 },

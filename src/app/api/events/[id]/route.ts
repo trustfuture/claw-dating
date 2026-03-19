@@ -3,6 +3,7 @@ import { getEventViewById } from "@/lib/api-view";
 import { getSession } from "@/lib/auth";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: NextRequest,
@@ -34,7 +35,7 @@ export async function GET(
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Get event detail error:", err);
+    logger.error("Get event detail error", { route: "/api/events/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取活动详情失败" },
       { status: 500 },
@@ -115,7 +116,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (err) {
-    console.error("Delete event error:", err);
+    logger.error("Delete event error", { route: "/api/events/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "删除活动失败，请重试" },
       { status: 500 },
@@ -181,7 +182,7 @@ export async function PATCH(
 
     return NextResponse.json({ message: "活动已重置为报名状态" });
   } catch (err) {
-    console.error("Reset event error:", err);
+    logger.error("Reset event error", { route: "/api/events/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "重置活动失败，请重试" },
       { status: 500 },

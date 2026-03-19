@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/secondme";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("SecondMe chat proxy error:", err);
+    logger.error("SecondMe chat proxy error", { route: "/api/secondme/chat", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "与 SecondMe 对话失败，请重试" },
       { status: 502 },

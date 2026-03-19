@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
+import { logger } from "@/lib/logger";
 
 export async function PUT(
   request: NextRequest,
@@ -78,7 +79,7 @@ export async function PUT(
 
     return response;
   } catch (err) {
-    console.error("Update agent error:", err);
+    logger.error("Update agent error", { route: "/api/agents/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "更新智能体失败，请重试" },
       { status: 500 },
@@ -141,7 +142,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (err) {
-    console.error("Delete agent error:", err);
+    logger.error("Delete agent error", { route: "/api/agents/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "删除智能体失败，请重试" },
       { status: 500 },

@@ -9,6 +9,7 @@ import {
   type AgentForMatching,
 } from "@/lib/matchmaker";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _request: NextRequest,
@@ -64,7 +65,7 @@ export async function POST(
         { status: 409 },
       );
     }
-    console.error("Start event error:", err);
+    logger.error("Start event error", { route: "/api/events/[id]/start", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "启动活动失败，请重试" },
       { status: 500 },

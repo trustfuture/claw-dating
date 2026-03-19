@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(
   _request: NextRequest,
@@ -45,7 +46,7 @@ export async function DELETE(
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Delete A2A agent error:", err);
+    logger.error("Delete A2A agent error", { route: "/api/a2a/agents/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "删除 A2A 智能体失败" },
       { status: 500 },

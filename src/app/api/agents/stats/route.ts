@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { computeAchievements } from "@/lib/achievements";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -81,7 +82,7 @@ export async function GET() {
 
     return NextResponse.json({ stats: result });
   } catch (err) {
-    console.error("Agent stats error:", err);
+    logger.error("Agent stats error", { route: "/api/agents/stats", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ stats: {} });
   }
 }

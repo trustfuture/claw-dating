@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: NextRequest,
@@ -87,7 +88,7 @@ export async function GET(
     await persistRefreshedSession(response, session);
     return response;
   } catch (err) {
-    console.error("Get date session error:", err);
+    logger.error("Get date session error", { route: "/api/dates/[id]", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "获取约会信息失败" },
       { status: 500 },
