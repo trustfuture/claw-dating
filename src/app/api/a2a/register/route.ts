@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json(
-      { error: "Invalid JSON body" },
+      { error: "请求格式错误" },
       { status: 400 },
     );
   }
