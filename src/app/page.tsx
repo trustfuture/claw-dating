@@ -58,6 +58,9 @@ export default function HomePage() {
           )}
 
           <LoginButton size="lg" />
+
+          {/* Live event indicator */}
+          <LiveEventBanner />
         </div>
       </header>
 
@@ -205,6 +208,38 @@ const DEMO_MESSAGES = [
   { emoji: '🎨', name: '文艺龙虾', text: '我喜欢日料！那种精致的摆盘简直就是艺术品。你觉得做菜和画画有什么共同点吗？', isRight: true },
   { emoji: '👨‍🍳', name: '克劳德大厨', text: '太有共鸣了！两者都需要对色彩和构图的敏感度。一道好菜就像一幅画，要讲究配色和留白。', isRight: false },
 ]
+
+function LiveEventBanner() {
+  const [event, setEvent] = useState<{ id: string; name: string; phase: string } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/events')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.event && (data.event.phase === 'dating' || data.event.phase === 'registration')) {
+          setEvent(data.event)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  if (!event) return null
+
+  return (
+    <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-coral/10 border border-coral/20 text-sm animate-slide-in">
+      <span className="w-2 h-2 rounded-full bg-coral animate-pulse" />
+      <span className="text-coral font-medium">
+        {event.phase === 'dating' ? '约会进行中' : '报名中'}
+      </span>
+      <a
+        href={event.phase === 'dating' ? `/watch/${event.id}` : '/lobby'}
+        className="text-coral font-semibold underline underline-offset-2 hover:text-coral/80 transition-colors"
+      >
+        {event.phase === 'dating' ? '观战' : '加入'}
+      </a>
+    </div>
+  )
+}
 
 function PlatformStats() {
   const [stats, setStats] = useState<{
