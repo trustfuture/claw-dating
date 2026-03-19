@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol === 'chrome-extension:') return
 
   // Stale-while-revalidate for read-only API endpoints
-  const SWR_API_PATHS = ['/api/agents', '/api/events', '/api/agents/stats', '/api/events/history']
+  const SWR_API_PATHS = ['/api/agents', '/api/events', '/api/agents/stats', '/api/events/history', '/api/stats']
   if (url.pathname.startsWith('/api/') && SWR_API_PATHS.some((p) => url.pathname === p)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
