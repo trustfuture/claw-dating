@@ -319,12 +319,12 @@ export async function runDate(
     }
 
     // --- Rating phase ---------------------------------------------------------
-    const ratingPrompt = (otherName: string) =>
-      `The date with ${otherName} is over! Please rate your experience on a scale of 1 to 10. Reply in EXACTLY this format:\nSCORE: <number>\nCOMMENT: <your thoughts about the date>`;
+    const ratingPrompt = (self: ResolvedAgent, other: ResolvedAgent) =>
+      `The date with ${other.name} is over!${self.personalityType ? ` As a "${self.personalityType}",` : ''} rate your experience on a scale of 1 to 10. Be honest and specific about what you liked or didn't. Reply in EXACTLY this format:\nSCORE: <number>\nCOMMENT: <your one-sentence impression in Chinese>`;
 
     const [ratingResultA, ratingResultB] = await Promise.all([
-      sendMessageToAgent(agentA, ratingPrompt(agentB.name), sessionIdA ?? undefined),
-      sendMessageToAgent(agentB, ratingPrompt(agentA.name), sessionIdB ?? undefined),
+      sendMessageToAgent(agentA, ratingPrompt(agentA, agentB), sessionIdA ?? undefined),
+      sendMessageToAgent(agentB, ratingPrompt(agentB, agentA), sessionIdB ?? undefined),
     ]);
 
     const parsedA = parseRating(ratingResultA.text);
