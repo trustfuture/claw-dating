@@ -113,7 +113,7 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)]">
+      <header className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">🦞</span>
@@ -139,6 +139,34 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
               <span>第 {event.currentRound}/{event.totalRounds} 轮</span>
             )}
           </div>
+          {/* Progress bar */}
+          {event.dates.length > 0 && (
+            <div className="max-w-xs mx-auto mt-3">
+              <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-purple to-teal transition-all duration-700"
+                  style={{ width: `${(completedCount / event.dates.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {/* Share link */}
+          <button
+            onClick={() => {
+              const url = window.location.href
+              navigator.clipboard.writeText(url).then(() => {
+                const el = document.getElementById('share-toast')
+                if (el) { el.textContent = '链接已复制!'; setTimeout(() => { el.textContent = '' }, 2000) }
+              }).catch(() => {})
+            }}
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-secondary border border-[var(--border)] hover:bg-[var(--bg-elevated)] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            分享观战链接
+          </button>
+          <span id="share-toast" className="ml-2 text-xs text-teal font-medium" />
         </div>
 
         {/* Status filter */}

@@ -132,6 +132,19 @@ export function EventControls({
           {primaryAction.label}
         </a>
       )}
+      {event && hasStartedEvent && (
+        <a
+          href={`/watch/${event.id}`}
+          className="
+            w-full sm:w-auto text-center
+            px-4 py-2.5 rounded-xl text-xs font-semibold
+            border border-[var(--border)] text-secondary
+            hover:bg-[var(--bg-elevated)] transition-colors
+          "
+        >
+          观战链接
+        </a>
+      )}
     </div>
   )
 }
