@@ -53,6 +53,8 @@ export function EventControls({
                 <button
                   key={n}
                   onClick={() => setTotalRounds(n)}
+                  aria-pressed={totalRounds === n}
+                  aria-label={`${n} 轮`}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     totalRounds === n
                       ? 'bg-purple text-white'
@@ -71,6 +73,8 @@ export function EventControls({
                 <button
                   key={n}
                   onClick={() => setTurnsPerAgent(n)}
+                  aria-pressed={turnsPerAgent === n}
+                  aria-label={`${n} 轮对话`}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     turnsPerAgent === n
                       ? 'bg-purple text-white'
