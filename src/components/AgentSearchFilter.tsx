@@ -54,6 +54,7 @@ export function AgentSearchFilter({
               <button
                 key={type}
                 onClick={() => onTogglePersonality(type)}
+                aria-pressed={activePersonalities.has(type)}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   activePersonalities.has(type)
                     ? 'bg-purple text-white'

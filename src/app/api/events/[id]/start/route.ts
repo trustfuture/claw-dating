@@ -9,6 +9,7 @@ import {
   type AgentForMatching,
 } from "@/lib/matchmaker";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function POST(
@@ -22,6 +23,15 @@ export async function POST(
     return NextResponse.json(
       { error: "未登录，请先登录" },
       { status: 401 },
+    );
+  }
+
+  // Rate limit - event start is expensive (LLM matchmaking)
+  const rl = checkRateLimit(`event-start:${session.userId}`, RATE_LIMITS.eventCreate);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "操作太频繁，请稍后再试" },
+      { status: 429 },
     );
   }
 

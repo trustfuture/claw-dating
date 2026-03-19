@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin();
   if (error) return error;
+
+  // Rate limit destructive admin operations
+  const rl = checkRateLimit(`admin-cleanup:${session!.userId}`, { limit: 3, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "操作太频繁，请稍后再试" }, { status: 429 });
+  }
 
   try {
     const body = await request.json();

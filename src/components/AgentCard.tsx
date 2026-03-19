@@ -49,6 +49,8 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, o
           className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
             agent.status === 'online' ? 'bg-teal' : 'bg-gray-300'
           }`}
+          aria-label={agent.status === 'online' ? '在线' : '离线'}
+          title={agent.status === 'online' ? '在线' : '离线'}
         />
       </div>
 
@@ -86,6 +88,7 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, o
           {onEdit && (
             <button
               onClick={onEdit}
+              aria-label={`编辑 ${agent.name}`}
               className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-purple border border-purple/20 hover:bg-purple/5 transition-colors"
             >
               编辑
@@ -94,6 +97,7 @@ export const AgentCard = memo(function AgentCard({ agent, isMe, stats, onEdit, o
           {onDelete && (
             <button
               onClick={onDelete}
+              aria-label={`删除 ${agent.name}`}
               className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-coral border border-coral/20 hover:bg-coral/5 transition-colors"
             >
               删除

@@ -5,6 +5,7 @@ import { getAllEventSummaries, getEventViewById, getLatestEventView } from "@/li
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { EVENT_LIMITS } from "@/lib/constants";
+import { sanitizeString } from "@/lib/sanitize";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -94,9 +95,11 @@ export async function POST(request: NextRequest) {
     const totalRounds = Math.max(EVENT_LIMITS.MIN_ROUNDS, Math.min(EVENT_LIMITS.MAX_ROUNDS, Number(rawRounds) || EVENT_LIMITS.DEFAULT_ROUNDS));
     const turnsPerAgent = Math.max(EVENT_LIMITS.MIN_TURNS_PER_AGENT, Math.min(EVENT_LIMITS.MAX_TURNS_PER_AGENT, Number(rawTurns) || EVENT_LIMITS.DEFAULT_TURNS_PER_AGENT));
 
+    const sanitizedName = sanitizeString(name, 50) || "龙虾相亲大会";
+
     const event = await prisma.event.create({
       data: {
-        name: name || "龙虾相亲大会",
+        name: sanitizedName,
         phase: "registration",
         currentRound: 0,
         totalRounds,

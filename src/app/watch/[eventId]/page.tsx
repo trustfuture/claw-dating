@@ -147,6 +147,7 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
+              aria-pressed={statusFilter === s}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 statusFilter === s
                   ? 'bg-purple text-white'
