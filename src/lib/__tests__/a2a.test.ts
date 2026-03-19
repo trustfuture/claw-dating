@@ -124,4 +124,34 @@ describe('parseAgentCardMetadata', () => {
     const result = parseAgentCardMetadata(card);
     expect(result.interests).toEqual(['cooking', 'travel', 'music']);
   });
+
+  it('limits interests to 10 items', () => {
+    const card = {
+      metadata: {
+        interests: Array.from({ length: 15 }, (_, i) => `interest${i}`),
+      },
+    };
+    const result = parseAgentCardMetadata(card);
+    expect(result.interests).toHaveLength(10);
+  });
+
+  it('filters out non-string interest entries', () => {
+    const card = {
+      metadata: {
+        interests: ['cooking', 42, null, 'travel'],
+      },
+    };
+    const result = parseAgentCardMetadata(card);
+    expect(result.interests).toEqual(['cooking', 'travel']);
+  });
+
+  it('parses JSON array string for interests', () => {
+    const card = {
+      metadata: {
+        interests: '["coding", "gaming"]',
+      },
+    };
+    const result = parseAgentCardMetadata(card);
+    expect(result.interests).toEqual(['coding', 'gaming']);
+  });
 });
