@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { useLocale } from '@/hooks/useLocale'
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '@/hooks/useKeyboardShortcuts'
 
 export function Navbar() {
   const pathname = usePathname()
@@ -14,9 +14,10 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { toggle: toggleTheme, isDark } = useTheme()
   const { locale, toggle: toggleLocale, t } = useLocale()
-  useKeyboardShortcuts()
+  const { showHelp, toggleHelp, closeHelp } = useKeyboardShortcuts()
 
   return (
+  <>
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--border)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4 md:gap-8">
@@ -68,6 +69,14 @@ export function Navbar() {
             aria-label="Switch language"
           >
             {locale === 'zh' ? 'EN' : '中'}
+          </button>
+          <button
+            onClick={toggleHelp}
+            className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors text-xs font-bold text-secondary"
+            aria-label="键盘快捷键"
+            title="键盘快捷键 (?)"
+          >
+            ?
           </button>
           {user && (
             <>
@@ -162,6 +171,38 @@ export function Navbar() {
         </div>
       )}
     </header>
+
+    {/* Keyboard shortcuts help modal */}
+    {showHelp && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={closeHelp} onKeyDown={(e) => e.key === 'Escape' && closeHelp()}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="键盘快捷键">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display text-lg font-bold">键盘快捷键</h3>
+            <button onClick={closeHelp} className="w-8 h-8 rounded-lg hover:bg-[var(--bg-elevated)] flex items-center justify-center transition-colors" aria-label="关闭">
+              <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {KEYBOARD_SHORTCUTS.map((shortcut) => (
+              <div key={shortcut.description} className="flex items-center justify-between">
+                <span className="text-sm text-secondary">{shortcut.description}</span>
+                <div className="flex gap-1">
+                  {shortcut.keys.map((key) => (
+                    <kbd key={key} className="px-2 py-0.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border)] text-xs font-mono text-secondary">
+                      {key}
+                    </kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   )
 }
 
