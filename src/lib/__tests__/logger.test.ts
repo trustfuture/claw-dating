@@ -58,4 +58,24 @@ describe("logger", () => {
     expect(output).toContain("dev warning");
     expect(output).toContain("route=/api/agents");
   });
+
+  it("handles context with non-string values", () => {
+    logger.info("test", { route: "/api/test", count: 42, nested: { a: 1 } });
+    expect(console.log).toHaveBeenCalledTimes(1);
+    const output = (console.log as jest.Mock).mock.calls[0][0];
+    expect(output).toContain("42");
+  });
+
+  it("works without context", () => {
+    logger.info("bare message");
+    expect(console.log).toHaveBeenCalledTimes(1);
+  });
+
+  it("includes timestamp in production JSON output", () => {
+    Object.defineProperty(process.env, "NODE_ENV", { value: "production" });
+    logger.info("timestamped");
+    const output = (console.log as jest.Mock).mock.calls[0][0];
+    const parsed = JSON.parse(output);
+    expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });
