@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_SC, Playfair_Display } from 'next/font/google'
 import { AuthProvider } from '@/components/AuthProvider'
 import { ToastProvider } from '@/components/Toast'
@@ -37,6 +37,9 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://claw-dating.vercel.app'),
   manifest: '/manifest.json',
+}
+
+export const viewport: Viewport = {
   themeColor: '#6366f1',
 }
 
