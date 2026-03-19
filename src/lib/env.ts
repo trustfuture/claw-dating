@@ -23,8 +23,7 @@ export function validateEnv() {
 
   const missingRecommended = RECOMMENDED_VARS.filter((v) => !process.env[v]);
   if (missingRecommended.length > 0 && process.env.NODE_ENV === "production") {
-    console.warn(
-      `[env] Missing recommended environment variables: ${missingRecommended.join(", ")}`,
-    );
+    // Use console.warn directly here since this runs at startup before logger may be ready
+    console.warn(`[env] Missing recommended environment variables: ${missingRecommended.join(", ")}`);
   }
 }

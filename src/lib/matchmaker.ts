@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { isLLMConfigured, chatCompletion } from "@/lib/llm";
+import { logger } from "@/lib/logger";
 
 export interface AgentForMatching {
   id: string;
@@ -365,7 +366,7 @@ ${agentProfileSummary(agentB)}
     }
     return null;
   } catch (err) {
-    console.warn("LLM reasoning generation failed, falling back to algorithmic:", err);
+    logger.warn("LLM reasoning generation failed, falling back to algorithmic", { route: "matchmaker", error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -441,7 +442,7 @@ export async function createPairingsWithLLM(
   try {
     return await enhancePairingsWithLLM(pairings, agents);
   } catch (err) {
-    console.warn("LLM enhancement failed entirely, using algorithmic pairings:", err);
+    logger.warn("LLM enhancement failed entirely, using algorithmic pairings", { route: "matchmaker", error: err instanceof Error ? err.message : String(err) });
     return pairings;
   }
 }
