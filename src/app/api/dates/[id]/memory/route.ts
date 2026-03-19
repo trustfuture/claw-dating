@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { reportDateMemoryForSession } from "@/lib/date-engine";
 import { persistRefreshedSession } from "@/lib/session-refresh";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function POST(
@@ -16,6 +17,11 @@ export async function POST(
       { error: "未登录，请先登录" },
       { status: 401 },
     );
+  }
+
+  const rl = checkRateLimit(`memory:${session.userId}`, RATE_LIMITS.general);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "操作太频繁，请稍后再试" }, { status: 429 });
   }
 
   try {

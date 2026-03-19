@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { serializeAgent } from "@/lib/api-view";
 import { persistRefreshedSession } from "@/lib/session-refresh";
 import { validateAgentInput } from "@/lib/sanitize";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function PUT(
@@ -17,6 +18,11 @@ export async function PUT(
       { error: "未登录，请先登录" },
       { status: 401 },
     );
+  }
+
+  const rl = checkRateLimit(`agent-mut:${session.userId}`, RATE_LIMITS.agentCreate);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "操作太频繁，请稍后再试" }, { status: 429 });
   }
 
   const { id } = await params;
