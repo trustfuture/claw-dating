@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, use } from 'react'
+import { useState, useEffect, useCallback, useRef, use, type RefObject } from 'react'
 import Link from 'next/link'
 import { POLLING } from '@/lib/constants'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -178,11 +178,21 @@ export default function WatchPage({ params }: { params: Promise<{ eventId: strin
   )
 }
 
+function useAutoScroll(deps: unknown[]): RefObject<HTMLDivElement | null> {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth' })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+  return ref
+}
+
 function WatchDateCard({ date }: { date: WatchDate }) {
   const { pairing, messages, ratings, status } = date
   const { agentA, agentB } = pairing
   const isActive = status === 'in_progress'
   const isCompleted = status === 'completed'
+  const messagesEndRef = useAutoScroll([messages.length])
 
   return (
     <div className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
@@ -226,6 +236,7 @@ function WatchDateCard({ date }: { date: WatchDate }) {
               </div>
             )
           })}
+          <div ref={messagesEndRef} />
         </div>
       )}
 
