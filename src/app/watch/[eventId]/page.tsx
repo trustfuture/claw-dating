@@ -269,8 +269,13 @@ function WatchDateCard({ date }: { date: WatchDate }) {
       )}
 
       {isActive && messages.length === 0 && (
-        <div className="px-4 py-8 text-center text-muted text-sm">
-          对话进行中...
+        <div className="px-4 py-8 flex flex-col items-center gap-2">
+          <div className="flex gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-2 h-2 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 rounded-full bg-purple/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <span className="text-muted text-xs">对话进行中...</span>
         </div>
       )}
 
