@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { validateAgentUrl, parseAgentCardMetadata } from '../a2a';
+import { validateAgentUrl, parseAgentCardMetadata, extractA2AResponseText } from '../a2a';
 
 describe('validateAgentUrl', () => {
   it('returns normalized URL for valid HTTPS URL', () => {
@@ -153,5 +153,119 @@ describe('parseAgentCardMetadata', () => {
     };
     const result = parseAgentCardMetadata(card);
     expect(result.interests).toEqual(['coding', 'gaming']);
+  });
+});
+
+describe('extractA2AResponseText', () => {
+  it('extracts text from result.message.parts', () => {
+    const result = extractA2AResponseText({
+      result: {
+        message: {
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'Hello from A2A!' }],
+        },
+      },
+    });
+    expect(result.text).toBe('Hello from A2A!');
+    expect(result.sessionId).toBeNull();
+  });
+
+  it('extracts text from result.artifacts', () => {
+    const result = extractA2AResponseText({
+      result: {
+        artifacts: [
+          { parts: [{ text: 'Artifact text' }] },
+        ],
+      },
+    });
+    expect(result.text).toBe('Artifact text');
+  });
+
+  it('extracts text from result.text directly', () => {
+    const result = extractA2AResponseText({
+      result: { text: 'Direct text' },
+    });
+    expect(result.text).toBe('Direct text');
+  });
+
+  it('extracts sessionId from metadata', () => {
+    const result = extractA2AResponseText({
+      result: {
+        message: { parts: [{ type: 'text', text: 'hi' }] },
+        metadata: { sessionId: 'sess-123' },
+      },
+    });
+    expect(result.sessionId).toBe('sess-123');
+  });
+
+  it('extracts sessionId from result root', () => {
+    const result = extractA2AResponseText({
+      result: {
+        text: 'hi',
+        sessionId: 'sess-456',
+      },
+    });
+    expect(result.sessionId).toBe('sess-456');
+  });
+
+  it('throws on missing result field', () => {
+    expect(() => extractA2AResponseText({})).toThrow('空结果');
+  });
+
+  it('throws on null result', () => {
+    expect(() => extractA2AResponseText({ result: null })).toThrow('空结果');
+  });
+
+  it('throws on array result (non-object)', () => {
+    expect(() => extractA2AResponseText({ result: [1, 2, 3] })).toThrow('非法结果格式');
+  });
+
+  it('throws on empty message (no text extractable)', () => {
+    expect(() =>
+      extractA2AResponseText({
+        result: { message: { parts: [] } },
+      }),
+    ).toThrow('空消息');
+  });
+
+  it('throws on parts with no text fields', () => {
+    expect(() =>
+      extractA2AResponseText({
+        result: {
+          message: {
+            parts: [{ type: 'image', url: 'http://example.com/img.png' }],
+          },
+        },
+      }),
+    ).toThrow('空消息');
+  });
+
+  it('concatenates multiple text parts', () => {
+    const result = extractA2AResponseText({
+      result: {
+        message: {
+          parts: [
+            { type: 'text', text: 'Hello ' },
+            { type: 'text', text: 'World' },
+          ],
+        },
+      },
+    });
+    expect(result.text).toBe('Hello World');
+  });
+
+  it('ignores non-text parts while extracting text', () => {
+    const result = extractA2AResponseText({
+      result: {
+        message: {
+          parts: [
+            { type: 'text', text: 'Valid' },
+            { type: 'image', url: 'img.png' },
+            { type: 'text', text: ' text' },
+          ],
+        },
+      },
+    });
+    expect(result.text).toBe('Valid text');
   });
 });

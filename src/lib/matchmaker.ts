@@ -117,7 +117,7 @@ interface CompatibilityResult {
   reasoning: string;
 }
 
-function computeSmartCompatibility(
+export function computeSmartCompatibility(
   agentA: AgentForMatching,
   agentB: AgentForMatching,
 ): CompatibilityResult {

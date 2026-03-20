@@ -56,6 +56,7 @@ type EventRecord = {
       status: string;
       round: number;
       chatSessionId: string | null;
+      highlights: string | null;
       createdAt: Date;
       messages: Array<{
         id: string;
@@ -215,7 +216,18 @@ function serializeDateSession(
       createdAt: message.createdAt,
     })),
     ratings: serializeRatings(dateSession.ratings, pairing),
+    highlights: parseHighlightsJson(dateSession.highlights),
   };
+}
+
+function parseHighlightsJson(raw: string | null | undefined): unknown[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 async function loadEventAgents(pairings: EventRecord["pairings"]) {

@@ -3,12 +3,12 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/hooks/useAuth'
 import { useLocale } from '@/hooks/useLocale'
 import { Navbar } from '@/components/Navbar'
 import { ScrollToTop } from '@/components/ScrollToTop'
 import { Confetti } from '@/components/Confetti'
 import { computeScoreboardResults, type Award, type MatchResult, type AgentStat, type ScoreboardEvent } from '@/lib/scoreboard-compute'
+import { HighlightsSection } from '@/components/HighlightCard'
 
 // Types imported from @/lib/scoreboard-compute
 
@@ -85,7 +85,6 @@ interface HistoryEvent {
 }
 
 function ScoreboardContent() {
-  const { user, loading } = useAuth()
   const { t } = useLocale()
   const searchParams = useSearchParams()
   const eventId = searchParams.get('eventId')
@@ -93,6 +92,7 @@ function ScoreboardContent() {
   const [matches, setMatches] = useState<MatchResult[]>([])
   const [agentStats, setAgentStats] = useState<AgentStat[]>([])
   const [eventName, setEventName] = useState<string>('')
+  const [highlights, setHighlights] = useState<Array<{ quote: string; speaker: string; category: string }>>([])
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState('')
@@ -102,10 +102,6 @@ function ScoreboardContent() {
   const [historyLoaded, setHistoryLoaded] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) window.location.href = '/'
-  }, [loading, user])
-
-  useEffect(() => {
     const url = eventId ? `/api/events/${eventId}` : '/api/events'
     fetch(url)
       .then((r) => r.json())
@@ -113,6 +109,17 @@ function ScoreboardContent() {
         if (data.event) {
           setEventName(data.event.name || '')
           computeResults(data.event as ScoreboardEvent)
+          // Collect highlights from all dates
+          const allHighlights: Array<{ quote: string; speaker: string; category: string }> = []
+          const evt = data.event as { dates?: Array<{ highlights?: Array<{ quote: string; speaker: string; category: string }> }> }
+          if (evt.dates) {
+            for (const d of evt.dates) {
+              if (d.highlights && Array.isArray(d.highlights)) {
+                allHighlights.push(...d.highlights)
+              }
+            }
+          }
+          setHighlights(allHighlights)
         }
       })
       .catch(() => {})
@@ -317,6 +324,11 @@ function ScoreboardContent() {
               ))}
             </div>
           </section>
+        )}
+
+        {/* Highlights */}
+        {highlights.length > 0 && !q && (
+          <HighlightsSection highlights={highlights as Array<{ quote: string; speaker: string; category: 'funny' | 'romantic' | 'witty' | 'awkward' | 'sweet' }>} />
         )}
 
         {/* Podium - Top 3 */}

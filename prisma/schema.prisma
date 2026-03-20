@@ -23,6 +23,7 @@ model User {
   updatedAt       DateTime @updatedAt
 
   agents Agent[]
+  votes  Vote[]
 }
 
 model Agent {
@@ -95,11 +96,13 @@ model DateSession {
   status        String   @default("pending")
   round         Int      @default(0)
   chatSessionId String?
+  highlights    String?  // JSON: Array<{ quote: string, speaker: string, category: string }>
   createdAt     DateTime @default(now())
 
   pairing  Pairing   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
   messages Message[]
   ratings  Rating[]
+  votes    Vote[]
 
   @@index([pairingId])
   @@index([status])
@@ -132,4 +135,18 @@ model Rating {
   @@index([dateSessionId])
   @@index([agentId])
   @@index([dateSessionId, agentId])
+}
+
+model Vote {
+  id            String   @id @default(cuid())
+  userId        String
+  dateSessionId String
+  voteType      String   // "chemistry" | "not_feeling_it"
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateSession DateSession @relation(fields: [dateSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dateSessionId])
+  @@index([dateSessionId])
 }

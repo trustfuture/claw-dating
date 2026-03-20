@@ -12,27 +12,20 @@ export async function GET(
   const { id } = await params;
   const session = await getSession();
 
-  if (!session) {
-    return NextResponse.json(
-      { error: "未登录，请先登录" },
-      { status: 401 },
-    );
-  }
-
   try {
     const event = await getEventViewById(id);
 
     if (!event) {
-      const response = NextResponse.json(
+      return NextResponse.json(
         { error: "活动不存在" },
         { status: 404 },
       );
-      await persistRefreshedSession(response, session);
-      return response;
     }
 
     const response = NextResponse.json({ event });
-    await persistRefreshedSession(response, session);
+    if (session) {
+      await persistRefreshedSession(response, session);
+    }
     return response;
   } catch (err) {
     logger.error("Get event detail error", { route: "/api/events/[id]", error: err instanceof Error ? err.message : String(err) });

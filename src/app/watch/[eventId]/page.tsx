@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, use, type RefObject } from 'r
 import Link from 'next/link'
 import { POLLING } from '@/lib/constants'
 import { StatusBadge } from '@/components/StatusBadge'
+import { VoteButtons } from '@/components/VoteButtons'
 
 interface WatchDate {
   id: string
@@ -299,6 +300,13 @@ function WatchDateCard({ date }: { date: WatchDate }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Audience voting */}
+      {(isActive || isCompleted) && (
+        <div className="px-4 sm:px-6 py-2 border-t border-[var(--border)]">
+          <VoteButtons dateSessionId={date.id} />
         </div>
       )}
     </div>

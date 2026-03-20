@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendChatMessage, reportAgentMemory } from "@/lib/secondme";
 import { sendA2AMessage } from "@/lib/a2a";
+import { extractAndSaveHighlights } from "@/lib/highlights";
 import { EVENT_LIMITS } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
@@ -47,23 +48,45 @@ const DEFAULT_TURNS_PER_AGENT = EVENT_LIMITS.DEFAULT_TURNS_PER_AGENT;
 // Helpers
 // ---------------------------------------------------------------------------
 
+interface RetryOptions {
+  maxRetries?: number;
+  baseDelay?: number;
+  /** Total timeout in ms — if exceeded, abort immediately regardless of retries. */
+  totalTimeout?: number;
+}
+
 async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 2,
-  baseDelay: number = 1000,
+  options: RetryOptions = {},
 ): Promise<T> {
+  const { maxRetries = 2, baseDelay = 1000, totalTimeout } = options;
+  const startTime = Date.now();
   let lastError: Error | null = null;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // Check total timeout before each attempt
+    if (totalTimeout && Date.now() - startTime >= totalTimeout) {
+      throw lastError ?? new Error("操作超时");
+    }
+
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Non-retryable: auth errors
       if (lastError.message.includes('401') || lastError.message.includes('403') || lastError.message.includes('未授权')) {
         throw lastError;
       }
+
+      // Retryable with longer backoff: rate limit (429)
+      const is429 = lastError.message.includes('429') || lastError.message.includes('rate') || lastError.message.includes('频繁');
+
       if (attempt < maxRetries) {
-        const jitter = Math.random() * 500;
-        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt) + jitter));
+        const delay = is429
+          ? baseDelay * Math.pow(3, attempt) + Math.random() * 2000  // Longer backoff for 429
+          : baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
@@ -393,6 +416,11 @@ export async function runDate(
         logger.error("Failed to report date memories", { route: "date-engine", error: err instanceof Error ? err.message : String(err) });
       });
     }
+
+    // --- Extract highlights async (fire-and-forget) ---
+    extractAndSaveHighlights(dateSession.id).catch((err) => {
+      logger.error("Failed to extract highlights", { route: "date-engine", error: err instanceof Error ? err.message : String(err) });
+    });
 
     return {
       dateSessionId: dateSession.id,

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const COOKIE_NAME = "claw_session";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/lobby", "/dates", "/scoreboard", "/admin"];
+const PROTECTED_ROUTES = ["/lobby", "/dates", "/admin"];
 
 // Admin-only routes
 const ADMIN_ROUTES = ["/admin"];

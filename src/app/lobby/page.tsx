@@ -14,6 +14,7 @@ import type { EventHistoryItem } from '@/components/EventHistory'
 
 const CreateAgentForm = dynamic(() => import('@/components/CreateAgentForm').then(m => ({ default: m.CreateAgentForm })), { ssr: false })
 const EventHistory = dynamic(() => import('@/components/EventHistory').then(m => ({ default: m.EventHistory })), { ssr: false })
+const ChemistryHeatmap = dynamic(() => import('@/components/ChemistryHeatmap').then(m => ({ default: m.ChemistryHeatmap })), { ssr: false })
 
 interface AgentData {
   id: string
@@ -355,6 +356,9 @@ export default function LobbyPage() {
             </div>
           </section>
         )}
+
+        {/* Chemistry Heatmap */}
+        {agents.length >= 2 && <ChemistryHeatmap />}
 
         {/* Agent Lobby */}
         <section>

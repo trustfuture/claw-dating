@@ -305,6 +305,13 @@ export async function sendA2AMessage(
     throw new Error("A2A agent 返回了无效的 JSON 响应");
   }
 
+  // Validate top-level structure: must be a JSON object
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error(
+      `A2A agent 返回了非法响应格式（期望 JSON 对象，实际: ${typeof result}）`,
+    );
+  }
+
   // Handle JSON-RPC error
   if (result.error) {
     const err = result.error as Record<string, unknown>;
@@ -313,13 +320,28 @@ export async function sendA2AMessage(
     );
   }
 
-  // Extract text from JSON-RPC result
+  // Extract text from JSON-RPC result — wrapped in try-catch for structural safety
+  try {
+    return extractA2AResponseText(result);
+  } catch (err) {
+    throw new Error(
+      `A2A agent 响应解析失败: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+/**
+ * Extract text and sessionId from a validated A2A JSON-RPC response.
+ * Separated from sendA2AMessage for testability.
+ */
+export function extractA2AResponseText(
+  result: Record<string, unknown>,
+): A2AMessageResponse {
   const rpcResult = result.result as Record<string, unknown> | undefined;
-  if (!rpcResult) {
-    throw new Error("A2A agent 返回了空结果");
+  if (!rpcResult || typeof rpcResult !== "object" || Array.isArray(rpcResult)) {
+    throw new Error("返回了空结果或非法结果格式");
   }
 
-  // The A2A protocol returns artifacts or parts in the result
   let text = "";
   let responseSessionId: string | null = null;
 
@@ -362,14 +384,13 @@ export async function sendA2AMessage(
   }
 
   if (!text) {
-    throw new Error("A2A agent 返回了空消息");
+    throw new Error("返回了空消息");
   }
 
   // Extract sessionId from task or metadata
   if (!responseSessionId) {
-    const task = rpcResult as Record<string, unknown>;
-    if (typeof task.sessionId === "string") {
-      responseSessionId = task.sessionId;
+    if (typeof rpcResult.sessionId === "string") {
+      responseSessionId = rpcResult.sessionId;
     }
   }
 
